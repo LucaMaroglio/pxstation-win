@@ -26,6 +26,8 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <!-- Testi in Strings\it-IT\Resources.resw: l'italiano è anche la lingua di riserva. -->
     <DefaultLanguage>it-IT</DefaultLanguage>
+    <!-- Main in Program.cs: l'istanza unica va decisa prima di creare l'app. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

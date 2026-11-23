@@ -58,11 +58,16 @@ windows-spice-client/
 │   │   ├── Wire/                ByteReader, ByteWriter, WireException (M0)
 │   │   ├── VVFile/              VVFileParser, ConnectionProfile, SecretTicket, Hotkey (M1)
 │   │   ├── UsbRedirWire/        UsbFilter (M1; il resto in M7)
-│   │   └── Proxmox/             ProxmoxClient (API + regole TLS), modelli, ProxmoxException (M1)
+│   │   ├── Proxmox/             ProxmoxClient (API + regole TLS), modelli, ProxmoxException (M1)
+│   │   ├── Transport/           TcpConnector (TCP, proxy CONNECT, TLS), TlsVerifier, ChannelLinker,
+│   │   │                        SpiceEndpoint, HostSubject/Pem, RsaTicketEncryptor (M2)
+│   │   ├── Channels/            ChannelConnection (protocollo base), ChannelOpener, MainChannel, SpiceLog (M2)
+│   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2)
 │   └── WindowsSpiceClient/      app WinUI 3
 │       ├── Assets/              app.ico (multi-risoluzione), PNG
 │       ├── Display/             D3D11Presenter, SwapChainPanelInterop
 │       ├── Diagnostics/         AppLog, SelfTest
+│       ├── Shell/               SingleInstance (AppInstance; Main in Program.cs) (M2)
 │       ├── Services/            AppController, ServerStore, Settings, CredentialStore,
 │       │                        FileAssociation, VmListLoader, Strings, JsonFiles
 │       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
@@ -71,10 +76,10 @@ windows-spice-client/
 └── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
 ```
 
-Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Transport,Channels,
-Agent,Codecs,UsbEmulation,Session}`, il progetto `SpiceKit.Windows` (WASAPI, WinSCard, UsbDk,
-Media Foundation; da creare quando serve la prima di queste parti) e, nell'app, `Input/`,
-`Shell/`. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
+Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Agent,Codecs,
+UsbEmulation}`, il progetto `SpiceKit.Windows` (WASAPI, WinSCard, UsbDk,
+Media Foundation; da creare quando serve la prima di queste parti) e, nell'app, `Input/`
+(e in `Shell/` area di notifica e notifiche). Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
 righe di P/Invoke e servono solo all'interfaccia.
 
 Dati dell'app: `%APPDATA%\WindowsSpiceClient\` (`settings.json`, `servers.json`,
@@ -98,6 +103,7 @@ tools\build.ps1                # build (avvisi = errori) + test
 tools\build.ps1 -SelfTest      # + autoverifica dell'app
 tools\build.ps1 -Publish       # + eseguibile autonomo Release in artifacts\win-x64
 tools\build.ps1 -Proxmox       # + autoverifica contro il finto Proxmox di ..\windows-spike (serve Python)
+tools\build.ps1 -Spice         # + autoverifica SPICE contro QEMU per Windows (serve Python e QEMU)
 ```
 
 - **.NET SDK:** se `dotnet` non è nel PATH, lo script usa `%LOCALAPPDATA%\Microsoft\dotnet`
@@ -109,12 +115,18 @@ tools\build.ps1 -Proxmox       # + autoverifica contro il finto Proxmox di ..\wi
   Direct3D dopo un clear di colore noto, scrive `self-test.txt` ed esce. Con `WSC_DATA_DIR`
   (impostata da `build.ps1`) usa una configurazione isolata e un server di prova, rimosso alla
   fine anche da Gestione credenziali; con `WSC_SELFTEST_SERVER` (impostata da
-  `selftest_proxmox.py`) usa il finto Proxmox e prova anche la connessione con `spiceproxy`.
+  `selftest_proxmox.py`) usa il finto Proxmox e prova anche la connessione con `spiceproxy` e
+  la sessione SPICE che ne segue; con `WSC_SELFTEST_VV=a.vv;b.vv` (impostata da
+  `selftest_spice.py`) apre quei file e riporta lo stato SPICE di ciascuno (QEMU in chiaro, TLS
+  con CA e `host-subject` attraverso un proxy CONNECT, ticket errato).
   **Guardare i PNG** dopo ogni modifica all'interfaccia.
   **Usarla al posto delle catture dello schermo:** nella VM di sviluppo (senza GPU, sessione
   remota) `CopyFromScreen` e `PrintWindow` restituiscono fotogrammi vecchi e le finestre a
   composizione appaiono nere anche quando sono disegnate correttamente.
-- Registro dell'app: `%LOCALAPPDATA%\WindowsSpiceClient\logs\app.log`.
+- Registro dell'app: `%LOCALAPPDATA%\WindowsSpiceClient\logs\app.log` (`WSC_LOG_DEBUG=1` aggiunge
+  i messaggi di protocollo di SpiceKit).
+- Istanza unica: un secondo avvio passa i suoi `.vv` all'istanza in esecuzione ed esce. Non vale
+  per l'autoverifica né con `WSC_DATA_DIR`.
 
 Prima di dichiarare finito un lavoro:
 1. `tools\build.ps1 -SelfTest` termina con «Tutto OK» (zero avvisi, test verdi, autoverifica superata).
@@ -166,5 +178,6 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 |---|---|
 | **M0** – soluzione, app WinUI 3 con icona, SpiceKit + test, swap chain D3D11, build locale | ✅ 23/11/2026 |
 | M1 – `.vv`, API Proxmox, Gestione credenziali, finestre Benvenuto / Macchine virtuali / Preferenze | ✅ 23/11/2026 |
-| M2 – trasporto (TCP, TLS, proxy CONNECT), link e autenticazione, canale main; istanza unica | da fare |
-| M2 … M9 | vedi PIANO.md §4 |
+| M2 – trasporto (TCP, TLS, proxy CONNECT), link e autenticazione, canale main; istanza unica | ✅ 23/11/2026 |
+| M3 – display: superfici, comandi di disegno, decoder LZ e QUIC, presentazione D3D11 | da fare |
+| M4 … M9 | vedi PIANO.md §4 |

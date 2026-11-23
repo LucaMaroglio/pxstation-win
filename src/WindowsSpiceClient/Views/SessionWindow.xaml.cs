@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SpiceKit.Proxmox;
+using SpiceKit.Session;
 using SpiceKit.VVFile;
 using WindowsSpiceClient.Diagnostics;
 using WindowsSpiceClient.Display;
@@ -10,23 +11,33 @@ using WindowsSpiceClient.Services;
 namespace WindowsSpiceClient.Views;
 
 /// <summary>
-/// Finestra di una sessione. In M1 mostra il profilo di connessione letto (senza segreti) e
-/// prepara la superficie Direct3D 11; il protocollo SPICE arriva con M2/M3.
+/// Finestra di una sessione: collega la sessione SPICE appena aperta (i ticket Proxmox scadono in
+/// circa 30 secondi) e ne mostra lo stato; prepara la superficie Direct3D 11, su cui lo schermo
+/// della VM verrà disegnato con M3.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001",
     Justification = "Una Window non è IDisposable: presenter e ticket vengono rilasciati nell'evento Closed.")]
 public sealed partial class SessionWindow : Window
 {
     private readonly D3D11Presenter? _presenter;
+    private readonly SpiceSession? _session;
+    private readonly string _summary;
+    private string? _guestName;
+    private bool _agent;
 
     internal SessionWindow(ConnectionProfile? profile, ProxmoxVMRef? reference, string? vmName)
     {
         InitializeComponent();
         AppTitleBar.Title = vmName ?? profile?.DisplayTitle ?? AppPaths.AppName;
         WindowChrome.Apply(this, Root, AppTitleBar, 1024, 720, minWidth: 480, minHeight: 360);
-        ProfileInfo.Message = profile is null ? "" : Summary(profile, reference);
-        // Finché non c'è il protocollo il ticket non serve: lo si azzera subito.
-        profile?.Password?.Wipe();
+        _summary = profile is null ? "" : Summary(profile, reference);
+        if (profile is not null)
+        {
+            _session = new SpiceSession(profile);
+            Closed += (_, _) => _ = _session.DisposeAsync().AsTask();
+            ShowState(SessionState.Connecting);
+            _ = RunSessionAsync(_session);
+        }
 
         // Diagnostica: WSC_RENDERER=none esclude Direct3D (per distinguere problemi del renderer da quelli di WinUI).
         if (string.Equals(Environment.GetEnvironmentVariable("WSC_RENDERER"), "none", StringComparison.OrdinalIgnoreCase))
@@ -61,6 +72,76 @@ public sealed partial class SessionWindow : Window
 
     internal Grid RootElement => Root;
 
+    /// <summary>Stato attuale della sessione (per l'autoverifica).</summary>
+    internal SessionState? SessionState => _session?.State;
+
+    /// <summary>Testo mostrato nella barra di stato (per l'autoverifica).</summary>
+    internal string StatusText => $"{ProfileInfo.Title} · {ProfileInfo.Message}";
+
+    private async Task RunSessionAsync(SpiceSession session)
+    {
+        await session.ConnectAsync();
+        // Gli eventi arrivano da altri thread; l'attesa riprende sul thread dell'interfaccia.
+        await foreach (var value in session.Events.ReadAllAsync())
+        {
+            switch (value)
+            {
+                case SessionEvent.StateChanged changed:
+                    ShowState(changed.State);
+                    break;
+                case SessionEvent.ChannelsLinked linked:
+                    AppLog.Info($"Sessione connessa: offerti {string.Join(", ", linked.Offered)}; collegati {string.Join(", ", linked.Linked)}");
+                    ProfileInfo.Message = Strings.Format("SessionConnectedDetail", string.Join(", ", linked.Linked.Prepend(new SpiceKit.Wire.ChannelEntry(1, 0))))
+                                          + Details();
+                    break;
+                case SessionEvent.GuestNameChanged name:
+                    _guestName = name.Name;
+                    break;
+                case SessionEvent.AgentChanged agent:
+                    _agent = agent.Connected;
+                    break;
+            }
+        }
+    }
+
+    private string Details()
+    {
+        var parts = new List<string> { _summary };
+        if (!string.IsNullOrWhiteSpace(_guestName)) parts.Add(Strings.Format("SessionGuestName", _guestName));
+        if (_agent) parts.Add(Strings.Get("SessionAgent"));
+        return "\n" + string.Join(" · ", parts.Where(p => p.Length > 0));
+    }
+
+    private void ShowState(SessionState state)
+    {
+        ConnectingProgress.Visibility = state.Kind == SessionStateKind.Connecting ? Visibility.Visible : Visibility.Collapsed;
+        switch (state.Kind)
+        {
+            case SessionStateKind.Connecting:
+                ProfileInfo.Severity = InfoBarSeverity.Informational;
+                ProfileInfo.Title = Strings.Get("SessionConnecting");
+                ProfileInfo.Message = _summary;
+                break;
+            case SessionStateKind.Connected:
+                ProfileInfo.Severity = InfoBarSeverity.Success;
+                ProfileInfo.Title = Strings.Get("SessionConnected");
+                break;
+            case SessionStateKind.Disconnected when state.Failure is null:
+                ProfileInfo.Severity = InfoBarSeverity.Informational;
+                ProfileInfo.Title = Strings.Get("SessionClosed");
+                break;
+            case SessionStateKind.Disconnected when state.Failure is { } failure:
+                var wasConnected = ProfileInfo.Severity == InfoBarSeverity.Success;
+                AppLog.Info($"Sessione terminata: {failure.Message} (ripristino: {failure.Recovery})");
+                ProfileInfo.Severity = InfoBarSeverity.Error;
+                ProfileInfo.Title = Strings.Get(wasConnected ? "SessionEnded" : "SessionFailed");
+                ProfileInfo.Message = failure.IsAuthenticationFailure
+                    ? $"{failure.Message}\n{Strings.Get("SessionNoTicketHint")}"
+                    : failure.Message;
+                break;
+        }
+    }
+
     /// <summary>Riepilogo senza ticket né CA; l'host Proxmox (che contiene un ticket del proxy) non viene mostrato.</summary>
     private static string Summary(ConnectionProfile profile, ProxmoxVMRef? reference)
     {
@@ -69,7 +150,7 @@ public sealed partial class SessionWindow : Window
         {
             parts.Add(Strings.Format("SummaryProxmox", reference.VmId, reference.Node, reference.ApiHost));
         }
-        else
+        else if (!profile.Host.StartsWith("pvespiceproxy:", StringComparison.OrdinalIgnoreCase))
         {
             parts.Add(Strings.Format("SummaryHost", profile.Host));
         }

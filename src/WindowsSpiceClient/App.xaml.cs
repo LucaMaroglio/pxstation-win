@@ -21,9 +21,13 @@ public partial class App : Application
 
     internal AppController Controller { get; }
 
+    /// <summary>Finestre di sessione aperte (l'ultima è la più recente).</summary>
+    internal IReadOnlyList<SessionWindow> Sessions => _sessions;
+
     public App()
     {
         InitializeComponent();
+        AppLog.AttachSpiceKit();
         Controller = new AppController(this);
         // L'autoverifica apre e chiude le finestre una alla volta: l'app termina solo con Exit().
         if (SelfTest.IsEnabled) DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;

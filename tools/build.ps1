@@ -8,12 +8,14 @@
   tools\build.ps1 -SelfTest        # + autoverifica (renderer Direct3D e interfaccia XAML)
   tools\build.ps1 -Publish         # + eseguibile autonomo Release in artifacts\win-x64
   tools\build.ps1 -Proxmox         # autoverifica contro il finto Proxmox di ..\windows-spike
+  tools\build.ps1 -Spice           # autoverifica SPICE contro QEMU (in chiaro, TLS via proxy, ticket errato)
 #>
 param(
     [ValidateSet('Debug', 'Release')] [string] $Configuration = 'Debug',
     [switch] $SelfTest,
     [switch] $Publish,
-    [switch] $Proxmox
+    [switch] $Proxmox,
+    [switch] $Spice
 )
 
 $ErrorActionPreference = 'Stop'
@@ -75,14 +77,28 @@ try {
         Test-Report $report @('^risorse: OK', '^direct3d: OK', 'errore mostrato')
     }
 
+    function Get-Python {
+        $python = (Get-Command python -ErrorAction SilentlyContinue | Where-Object Source -notlike '*WindowsApps*').Source
+        if (-not $python) { $python = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe' }
+        if (-not (Test-Path $python)) { throw 'Python non trovato (serve per l''ambiente di ..\windows-spike).' }
+        $python
+    }
+
     if ($Proxmox) {
         $report = Join-Path $root 'artifacts\self-test-proxmox'
         Remove-Item -Recurse -Force $report -ErrorAction SilentlyContinue
-        $python = (Get-Command python -ErrorAction SilentlyContinue | Where-Object Source -notlike '*WindowsApps*').Source
-        if (-not $python) { $python = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe' }
-        if (-not (Test-Path $python)) { throw 'Python non trovato (serve per il finto Proxmox).' }
+        $python = Get-Python
         Invoke-Step "Autoverifica con il finto Proxmox ($exe)" { & $python (Join-Path $PSScriptRoot 'selftest_proxmox.py') $exe $report }
-        Test-Report $report @('^risorse: OK', '^direct3d: OK', '=paused', '^connessione .*: OK')
+        Test-Report $report @('^risorse: OK', '^direct3d: OK', '=paused', '^connessione .*: OK', '^spice .*: connessa')
+    }
+
+    if ($Spice) {
+        $report = Join-Path $root 'artifacts\self-test-spice'
+        Remove-Item -Recurse -Force $report -ErrorAction SilentlyContinue
+        $python = Get-Python
+        Invoke-Step "Autoverifica SPICE con QEMU ($exe)" { & $python (Join-Path $PSScriptRoot 'selftest_spice.py') $exe $report }
+        Test-Report $report @('^direct3d: OK', '^spice in-chiaro: connessa', '^spice proxmox-tls: connessa',
+            '^spice ticket-errato: non riuscita \(ticket\)', '^spice senza server: non riuscita')
     }
 
     Write-Host "`nTutto OK." -ForegroundColor Green

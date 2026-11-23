@@ -18,9 +18,13 @@
             </TitleBar.IconSource>
         </TitleBar>
 
-        <!-- M1: riepilogo del profilo letto; la connessione SPICE arriva con M2. -->
-        <InfoBar x:Name="ProfileInfo" x:Uid="SessionPendingBar" Grid.Row="1" Margin="12,0,12,8" IsOpen="True" IsClosable="False"
-                 Severity="Informational" />
+        <!-- Stato della connessione SPICE (M2); il riepilogo del profilo resta sotto il titolo. -->
+        <InfoBar x:Name="ProfileInfo" Grid.Row="1" Margin="12,0,12,8" IsOpen="True" IsClosable="False"
+                 Severity="Informational">
+            <InfoBar.Content>
+                <ProgressBar x:Name="ConnectingProgress" IsIndeterminate="True" Margin="0,0,0,12" />
+            </InfoBar.Content>
+        </InfoBar>
 
         <!-- Superficie Direct3D 11: qui verrà disegnato lo schermo della VM (M3). -->
         <SwapChainPanel x:Name="DisplayPanel" Grid.Row="2" Margin="12,0,12,0" />

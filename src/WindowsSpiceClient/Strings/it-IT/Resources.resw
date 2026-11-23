@@ -142,11 +142,19 @@ Il token API di questo server verrà eliminato da Gestione credenziali di Window
   <data name="TrustCertificateButton.Content" xml:space="preserve"><value>Considera attendibile questo certificato</value></data>
 
   <!-- Sessione (M1: riepilogo del profilo) -->
-  <data name="SessionPendingBar.Title" xml:space="preserve"><value>Profilo di connessione letto: la connessione SPICE arriva con la milestone M2</value></data>
   <data name="SummaryProxmox" xml:space="preserve"><value>VM {0} sul nodo {1} ({2})</value></data>
   <data name="SummaryHost" xml:space="preserve"><value>host {0}</value></data>
   <data name="SummaryTls" xml:space="preserve"><value>porta TLS {0}</value></data>
   <data name="SummaryPlain" xml:space="preserve"><value>porta in chiaro {0}</value></data>
   <data name="SummaryProxy" xml:space="preserve"><value>proxy {0}:{1}</value></data>
   <data name="SummaryVerified" xml:space="preserve"><value>certificato da verificare con la CA e il soggetto del file</value></data>
+  <data name="SessionConnecting" xml:space="preserve"><value>Connessione in corso…</value></data>
+  <data name="SessionConnected" xml:space="preserve"><value>Connesso</value></data>
+  <data name="SessionConnectedDetail" xml:space="preserve"><value>Canali collegati: {0}. Lo schermo della macchina virtuale arriva con la milestone M3.</value></data>
+  <data name="SessionGuestName" xml:space="preserve"><value>Macchina virtuale: {0}</value></data>
+  <data name="SessionAgent" xml:space="preserve"><value>agente SPICE attivo</value></data>
+  <data name="SessionClosed" xml:space="preserve"><value>Sessione chiusa</value></data>
+  <data name="SessionFailed" xml:space="preserve"><value>Connessione non riuscita</value></data>
+  <data name="SessionEnded" xml:space="preserve"><value>Sessione terminata</value></data>
+  <data name="SessionNoTicketHint" xml:space="preserve"><value>Con Proxmox premi di nuovo «Connetti» (o SPICE nell'interfaccia web) per ottenere un file nuovo.</value></data>
 </root>

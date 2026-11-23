@@ -104,8 +104,15 @@ internal static class SelfTest
         {
             try
             {
+                var before = app.Sessions.Count;
                 await app.Controller.ConnectVmAsync(running.Server, running.Vm);
                 lines.Add($"connessione {running.Name}: OK (spiceproxy letto e convalidato)");
+                if (app.Sessions.Count > before)
+                {
+                    var opened = app.Sessions[^1];
+                    lines.Add(await SessionResultAsync(opened, $"spice {running.Name}"));
+                    opened.Close();
+                }
             }
             catch (Exception error) when (error is ProxmoxException or VVFileException)
             {
@@ -122,10 +129,24 @@ internal static class SelfTest
         lines.Add(await CaptureAsync(preferences.RootElement, directory, "preferences-proxmox.png"));
         preferences.Close();
 
-        var profile = VVFileParser.Parse("[virt-viewer]\ntype=spice\nhost=127.0.0.1\nport=5930\ntitle=Autoverifica\n").Profile;
+        // File .vv da provare (tools/selftest_spice.py: QEMU in chiaro, TLS via proxy, ticket sbagliato).
+        var vvFiles = Environment.GetEnvironmentVariable("WSC_SELFTEST_VV")?.Split(';', StringSplitOptions.RemoveEmptyEntries) ?? [];
+        foreach (var path in vvFiles)
+        {
+            var name = Path.GetFileNameWithoutExtension(path);
+            var window = app.OpenSession(VVFileParser.ReadFile(path).Profile, null, name);
+            lines.Add(await SessionResultAsync(window, $"spice {name}"));
+            await SettleAsync(window.RootElement, 300);
+            lines.Add(await CaptureAsync(window.RootElement, directory, $"session-{name}.png"));
+            window.Close();
+        }
+
+        // Porta 1 (tcpmux): nessun server SPICE, la connessione deve fallire con un messaggio.
+        var profile = VVFileParser.Parse("[virt-viewer]\ntype=spice\nhost=127.0.0.1\nport=1\ntitle=Autoverifica\n").Profile;
         var session = app.OpenSession(profile, null, null);
         await SettleAsync(session.RootElement, 1500); // primo layout, ridimensionamento della swap chain
         lines.Add(session.ProbeRenderer());
+        lines.Add(await SessionResultAsync(session, "spice senza server"));
         lines.Add(await CaptureAsync(session.RootElement, directory, "session.png"));
         session.Close();
     }
@@ -163,6 +184,23 @@ internal static class SelfTest
             await Task.WhenAny(loaded.Task, Task.Delay(5000));
         }
         await Task.Delay(milliseconds);
+    }
+
+    /// <summary>Attende che la sessione esca da "connessione in corso" e ne riporta lo stato.</summary>
+    private static async Task<string> SessionResultAsync(SessionWindow window, string label)
+    {
+        await WaitForAsync(() => window.SessionState?.Kind is not SpiceKit.Session.SessionStateKind.Connecting
+                                 and not SpiceKit.Session.SessionStateKind.Idle, TimeSpan.FromSeconds(40));
+        await Task.Delay(300); // ultimi eventi (elenco dei canali) sull'interfaccia
+        var state = window.SessionState;
+        var text = window.StatusText.Replace('\n', ' ');
+        return state?.Kind switch
+        {
+            SpiceKit.Session.SessionStateKind.Connected => $"{label}: connessa · {text}",
+            SpiceKit.Session.SessionStateKind.Disconnected when state.Failure is { } failure =>
+                $"{label}: non riuscita{(failure.IsAuthenticationFailure ? " (ticket)" : "")} · {text}",
+            _ => $"{label}: stato {state?.Kind} · {text}",
+        };
     }
 
     private static async Task WaitForAsync(Func<bool> condition, TimeSpan timeout)
