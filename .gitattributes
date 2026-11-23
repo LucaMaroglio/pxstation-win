@@ -1,0 +1,10 @@
+# Testo normalizzato a LF nel repository.
+* text=auto
+
+# Le fixture sono confrontate byte per byte (es. crlf-bom.vv): mai convertirle.
+tests/**/Fixtures/** -text
+
+*.ico binary
+*.png binary
+*.bin binary
+*.der binary
