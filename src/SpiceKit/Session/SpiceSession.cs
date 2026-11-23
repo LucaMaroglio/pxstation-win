@@ -29,12 +29,13 @@ public abstract record SessionEvent
 /// <c>SPICE_MSG_MAIN_INIT</c> e collega con quello gli altri canali elencati da
 /// <c>CHANNELS_LIST</c>, tutti subito: i ticket Proxmox scadono in circa 30 secondi. Poi il
 /// ticket viene azzerato.</para>
-/// <para>M2: display, inputs e cursor vengono collegati e i loro messaggi scartati (il
-/// protocollo base, ACK e PING, resta attivo); il loro contenuto arriva con M3–M4.</para>
+/// <para>Il canale display 0 alimenta <see cref="DisplayEvents"/> (M3); inputs e cursor vengono collegati e i loro
+/// messaggi scartati (il protocollo base, ACK e PING, resta attivo) fino a M4.</para>
 /// </remarks>
 public sealed class SpiceSession : IAsyncDisposable
 {
     private readonly Channel<SessionEvent> _events = Channel.CreateUnbounded<SessionEvent>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly Channel<DisplayEvent> _display = Channel.CreateUnbounded<DisplayEvent>(new UnboundedChannelOptions { SingleReader = true });
     private readonly ChannelOpener _opener;
     private readonly TransportException? _configurationError;
     private readonly SecretTicket? _ticket;
@@ -72,6 +73,12 @@ public sealed class SpiceSession : IAsyncDisposable
 
     /// <summary>Eventi per l'interfaccia, in ordine; si completa alla fine della sessione.</summary>
     public ChannelReader<SessionEvent> Events => _events.Reader;
+
+    /// <summary>Eventi dello schermo (canale display 0) per il renderer; si completa alla fine della sessione.</summary>
+    public ChannelReader<DisplayEvent> DisplayEvents => _display.Reader;
+
+    /// <summary>Contropressione verso il renderer: <see cref="DisplayUpdateCredit.Consumed"/> dopo ogni aggiornamento applicato.</summary>
+    public DisplayUpdateCredit DisplayCredit { get; } = new();
 
     public SessionState State
     {
@@ -181,7 +188,7 @@ public sealed class SpiceSession : IAsyncDisposable
         try
         {
             var opened = await Task.WhenAll(wanted.Select(entry =>
-                _opener.OpenAsync(entry.Type, entry.Id, sessionId, new CapabilitySet(), _stop.Token))).ConfigureAwait(false);
+                _opener.OpenAsync(entry.Type, entry.Id, sessionId, CapabilitiesOf(entry.Type), _stop.Token))).ConfigureAwait(false);
             lock (_lock)
             {
                 if (_state.Kind != SessionStateKind.Connecting)
@@ -193,9 +200,17 @@ public sealed class SpiceSession : IAsyncDisposable
             }
             foreach (var connection in opened)
             {
-                // Display (M3), inputs e cursor (M4): per ora si tiene vivo il canale e si scartano i messaggi.
-                Spawn($"{connection.Type.Name()}:{connection.Id}", critical: connection.Type != ChannelType.Cursor,
-                    () => DrainAsync(connection));
+                var name = $"{connection.Type.Name()}:{connection.Id}";
+                if (connection.Type == ChannelType.Display)
+                {
+                    var display = new DisplayChannel(connection, _display.Writer, DisplayCredit);
+                    Spawn(name, critical: true, () => display.RunAsync(_stop.Token));
+                }
+                else
+                {
+                    // Inputs e cursor (M4): per ora si tiene vivo il canale e si scartano i messaggi.
+                    Spawn(name, critical: connection.Type != ChannelType.Cursor, () => DrainAsync(connection));
+                }
             }
         }
         catch (Exception error) when (error is TransportException or ChannelException or OperationCanceledException)
@@ -209,6 +224,9 @@ public sealed class SpiceSession : IAsyncDisposable
         Emit(new SessionEvent.ChannelsLinked(offered, wanted));
         SpiceLog.Info("session", "sessione connessa");
     }
+
+    private static CapabilitySet CapabilitiesOf(ChannelType type) =>
+        type == ChannelType.Display ? DisplayChannel.Capabilities : new CapabilitySet();
 
     private async Task DrainAsync(ChannelConnection connection)
     {
@@ -265,6 +283,7 @@ public sealed class SpiceSession : IAsyncDisposable
         if (main is not null) await main.DisposeAsync().ConfigureAwait(false);
         foreach (var channel in channels) await channel.DisposeAsync().ConfigureAwait(false);
         _events.Writer.TryComplete();
+        _display.Writer.TryComplete();
     }
 
     private void SetState(SessionState state)
