@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- xunit v3: i progetti di test sono eseguibili. -->
+    <OutputType>Exe</OutputType>
+    <!-- Nei test i nomi in stile frase e le asserzioni su eccezioni sono voluti. -->
+    <NoWarn>$(NoWarn);CA1707;CA1515;CA1861;CA1720</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SpiceKit\SpiceKit.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Fixture copiate da macos-spice-client/Packages/SpiceKit/Tests/Fixtures (vedi Fixtures/README.md). -->
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Fixtures" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Microsoft.Testing.Platform (global.json): basta xunit.v3, niente VSTest. -->
+    <PackageReference Include="xunit.v3" Version="4.0.3" />
+  </ItemGroup>
+</Project>

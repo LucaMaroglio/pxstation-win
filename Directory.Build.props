@@ -1,0 +1,17 @@
+<Project>
+  <!-- Impostazioni comuni a tutti i progetti (AGENTS.md §2). -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+    <Company>Windows Spice Client</Company>
+    <Product>Windows Spice Client</Product>
+    <Copyright>MIT – deriva da MacOS Spice Client © Paweł Więcaszek</Copyright>
+    <Version>0.1.0</Version>
+    <NeutralLanguage>it-IT</NeutralLanguage>
+  </PropertyGroup>
+</Project>

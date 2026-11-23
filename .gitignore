@@ -1,0 +1,11 @@
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+.vs/
+.vscode/
+*.binlog
+TestResults/
+# Catture e report dell'autoverifica (si rigenerano con tools\build.ps1 -SelfTest)
+docs/self-test/
