@@ -57,6 +57,7 @@ public sealed partial class SpiceSession : IAsyncDisposable
     public SpiceSession(ConnectionProfile profile, IStreamConnector connector, ITicketEncryptor encryptor, TimeSpan? linkTimeout = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
+        _profile = profile;
         _ticket = profile.Password;
         SpiceEndpoint endpoint;
         try
@@ -240,15 +241,22 @@ public sealed partial class SpiceSession : IAsyncDisposable
     /// Canali da collegare. L'elenco viene dal server: duplicati scartati e numero di connessioni
     /// limitato (un canale per tipo).
     /// </summary>
-    internal static IReadOnlyList<ChannelEntry> Wanted(IReadOnlyList<ChannelEntry> offered, AudioSupport audio = default) =>
-        [.. offered.Distinct().Where(e => e.Id == 0 && (e.Type is ChannelType.Display or ChannelType.Inputs or ChannelType.Cursor
-            || (e.Type == ChannelType.Playback && audio.Playback) || (e.Type == ChannelType.Record && audio.Record)))];
+    internal static IReadOnlyList<ChannelEntry> Wanted(IReadOnlyList<ChannelEntry> offered, AudioSupport audio = default,
+        bool usb = false, bool smartcard = false)
+    {
+        var distinct = offered.Distinct().ToList();
+        // Gli slot USB vanno collegati tutti subito (il ticket Proxmox scade): al massimo MaxUsbSlots.
+        var slots = usb ? distinct.Where(e => e.Type == ChannelType.Usbredir).Take(MaxUsbSlots) : [];
+        return [.. distinct.Where(e => e.Id == 0 && (e.Type is ChannelType.Display or ChannelType.Inputs or ChannelType.Cursor
+            || (e.Type == ChannelType.Playback && audio.Playback) || (e.Type == ChannelType.Record && audio.Record)
+            || (e.Type == ChannelType.Smartcard && smartcard))).Concat(slots)];
+    }
 
     private async Task OpenChannelsAsync(IReadOnlyList<ChannelEntry> offered)
     {
         if (_channelsRequested || _sessionId is not { } sessionId) return;
         _channelsRequested = true;
-        var wanted = Wanted(offered, Audio);
+        var wanted = Wanted(offered, Audio, UsbAllowed, SmartcardAllowed);
         SpiceLog.Info("session", $"il server offre {offered.Count} canali ({string.Join(", ", offered)}); se ne collegano {wanted.Count}");
         try
         {
@@ -296,6 +304,16 @@ public sealed partial class SpiceSession : IAsyncDisposable
                         Volatile.Write(ref _recordChannel, record);
                         Spawn(name, critical: false, () => record.RunAsync(_stop.Token));
                         break;
+                    case ChannelType.Usbredir:
+                        var slot = new UsbRedirChannel(connection.Id, connection, _usb.Writer);
+                        lock (_lock) _usbSlots.Add(slot);
+                        Spawn(name, critical: false, () => slot.RunAsync(_stop.Token));
+                        break;
+                    case ChannelType.Smartcard:
+                        var smartcard = new SmartcardChannel(connection, _smartcard.Writer);
+                        Volatile.Write(ref _smartcardChannel, smartcard);
+                        Spawn(name, critical: false, () => smartcard.RunAsync(_stop.Token));
+                        break;
                 }
             }
         }
@@ -317,6 +335,8 @@ public sealed partial class SpiceSession : IAsyncDisposable
         ChannelType.Inputs => InputsChannel.Capabilities,
         ChannelType.Playback => PlaybackChannel.Capabilities(Audio.OpusPlayback),
         ChannelType.Record => RecordChannel.Capabilities,
+        ChannelType.Usbredir => UsbRedirChannel.Capabilities,
+        ChannelType.Smartcard => SmartcardChannel.Capabilities,
         _ => CursorChannel.Capabilities,
     };
 
@@ -371,6 +391,9 @@ public sealed partial class SpiceSession : IAsyncDisposable
         _clipboard.Writer.TryComplete();
         _playback.Writer.TryComplete();
         _record.Writer.TryComplete();
+        _usb.Writer.TryComplete();
+        _smartcard.Writer.TryComplete();
+        Volatile.Write(ref _smartcardChannel, null);
         Volatile.Write(ref _recordChannel, null);
         Volatile.Write(ref _inputs, null);
         AgentGone();

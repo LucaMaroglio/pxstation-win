@@ -83,11 +83,11 @@ public sealed class SessionFlowTests
             events.OfType<SessionEvent.StateChanged>().Select(e => e.State.Kind));
         var linked = events.OfType<SessionEvent.ChannelsLinked>().Single();
         Assert.Equal(7, linked.Offered.Count);
-        // Duplicati, USB, audio e secondo schermo non collegati in M2.
-        Assert.Equal(["display:0", "inputs:0", "cursor:0"], linked.Linked.Select(e => e.ToString()));
+        // Duplicati, audio (non supportato da questa sessione) e secondo schermo non collegati; gli slot USB sì, subito (M8).
+        Assert.Equal(["display:0", "inputs:0", "cursor:0", "usbredir:0"], linked.Linked.Select(e => e.ToString()));
 
         var links = server.Links.OrderBy(l => l.Type).ToList();
-        Assert.Equal([ChannelType.Main, ChannelType.Display, ChannelType.Inputs, ChannelType.Cursor], links.Select(l => l.Type));
+        Assert.Equal([ChannelType.Main, ChannelType.Display, ChannelType.Inputs, ChannelType.Cursor, ChannelType.Usbredir], links.Select(l => l.Type));
         Assert.Equal(0u, links[0].ConnectionId);
         Assert.All(links.Skip(1), l => Assert.Equal(SessionId, l.ConnectionId));
         Assert.All(links, l => Assert.Equal("secret\0"u8.ToArray(), l.Ticket[..7]));

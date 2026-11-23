@@ -118,6 +118,20 @@ public enum SpiceVmcCapability
     DataCompressLz4 = 0,
 }
 
+/// <summary><c>SPICE_MSG_SPICEVMC_*</c> / <c>SPICE_MSGC_SPICEVMC_*</c> (usbredir, port, webdav).</summary>
+public enum SpiceVmcMessage : ushort
+{
+    Data = 101,
+    CompressedData,
+}
+
+/// <summary><c>SpiceDataCompressionType</c> (enums.h).</summary>
+public enum DataCompressionType : byte
+{
+    None = 0,
+    Lz4 = 1,
+}
+
 /// <summary><c>SpiceMouseMode</c> (enums.h): flag.</summary>
 [Flags]
 public enum MouseModes : uint
