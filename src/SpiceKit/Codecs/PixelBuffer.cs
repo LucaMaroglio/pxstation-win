@@ -111,9 +111,9 @@ public sealed class CodecException(CodecErrorKind kind, string message) : Except
 {
     public CodecErrorKind Kind { get; } = kind;
 
-    internal static CodecException Truncated() => new(CodecErrorKind.Truncated, "Immagine troncata.");
+    public static CodecException Truncated() => new(CodecErrorKind.Truncated, "Immagine troncata.");
 
-    internal static CodecException Corrupt(string what) => new(CodecErrorKind.Corrupt, "Immagine non valida: " + what + ".");
+    public static CodecException Corrupt(string what) => new(CodecErrorKind.Corrupt, "Immagine non valida: " + what + ".");
 
     internal static CodecException BadMagic() => new(CodecErrorKind.BadMagic, "Intestazione dell'immagine non riconosciuta.");
 
@@ -134,7 +134,7 @@ public static class CodecLimits
     public const int MaxDimension = 16_384;
     public const int MaxPixels = 64 * 1024 * 1024;
 
-    internal static void Check(long width, long height)
+    public static void Check(long width, long height)
     {
         if (width <= 0 || height <= 0 || width > MaxDimension || height > MaxDimension || width * height > MaxPixels)
         {

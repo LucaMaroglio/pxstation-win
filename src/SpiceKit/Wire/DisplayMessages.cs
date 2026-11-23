@@ -258,7 +258,7 @@ public static class DisplayDecoders
 }
 
 /// <summary>Messaggi client → server del canale display.</summary>
-public static class DisplayClientEncoder
+public static partial class DisplayClientEncoder
 {
     /// <summary><c>SPICE_MSGC_DISPLAY_INIT</c>.</summary>
     public static SpiceMessage Initialize(byte pixmapCacheId, long pixmapCacheSize, byte glzDictionaryId, int glzWindowSize)

@@ -26,7 +26,7 @@ public abstract record MainEvent
 /// Porting di <c>MainChannel.swift</c> senza il canale dell'agente (vdagent), che arriva con
 /// M6: per ora si registra solo se l'agente è presente, senza inviare <c>AGENT_START</c>.
 /// </remarks>
-public sealed class MainChannel(ChannelConnection connection) : IAsyncDisposable
+public sealed class MainChannel(ChannelConnection connection, MultimediaClock? clock = null) : IAsyncDisposable
 {
     /// <summary>Capacità annunciate dal client.</summary>
     public static CapabilitySet Capabilities => CapabilitySet.FromBits(
@@ -82,6 +82,7 @@ public sealed class MainChannel(ChannelConnection connection) : IAsyncDisposable
                 _supportedModes = init.SupportedMouseModes;
                 _currentMode = init.CurrentMouseMode;
                 IsAgentConnected = init.AgentConnected;
+                clock?.Set(init.MultimediaTime);
                 Emit(new MainEvent.Initialized(init.SessionId, _supportedModes, _currentMode, init.AgentConnected));
                 await connection.SendAsync(MainClientEncoder.AttachChannels(), cancellationToken).ConfigureAwait(false);
                 // Modalità client (puntatore assoluto) ogni volta che il server la offre.
@@ -118,13 +119,16 @@ public sealed class MainChannel(ChannelConnection connection) : IAsyncDisposable
             case MainServerMessage.Uuid:
                 Emit(new MainEvent.GuestUuid(MainDecoders.Uuid(message.Payload)));
                 break;
+            case MainServerMessage.MultiMediaTime:
+                clock?.Set(MainDecoders.UInt32(message.Payload));
+                break;
             case MainServerMessage.MigrateBegin:
             case MainServerMessage.MigrateBeginSeamless:
             case MainServerMessage.MigrateSwitchHost:
                 SpiceLog.Info("main", "migrazione richiesta: non supportata");
                 throw ChannelException.MigrationUnsupported();
             default:
-                // AGENT_DATA/AGENT_TOKEN (M6), MULTI_MEDIA_TIME (M7), fine/annullo migrazione.
+                // AGENT_DATA/AGENT_TOKEN (M6), fine/annullo migrazione.
                 SpiceLog.Debug("main", $"messaggio main {message.Type} ignorato");
                 break;
         }

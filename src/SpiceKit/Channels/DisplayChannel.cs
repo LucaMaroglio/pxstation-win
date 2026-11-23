@@ -62,11 +62,11 @@ public abstract record DisplayEvent
 /// fuori dal thread dell'interfaccia.
 /// </summary>
 /// <remarks>
-/// M3: superfici, comandi di disegno, immagini bitmap/QUIC/LZ/GLZ/ZLIB-GLZ/LZ4 e cache. JPEG e
-/// flussi video arrivano con M5: non si annuncia nessun codec video, quindi il server disegna
-/// anche le aree in movimento come immagini.
+/// Superfici, comandi di disegno, immagini bitmap/QUIC/LZ/GLZ/ZLIB-GLZ/LZ4 e cache (M3); JPEG e
+/// flussi video MJPEG/H.264/H.265 con i decoder della piattaforma (M5, <see cref="IMediaDecoders"/>).
+/// Si annunciano solo i codec che la piattaforma sa decodificare.
 /// </remarks>
-public sealed class DisplayChannel
+public sealed partial class DisplayChannel
 {
     /// <summary>Pixel annunciati per la cache delle pixmap.</summary>
     public const long PixmapCacheBudget = 16 * 1024 * 1024;
@@ -87,7 +87,7 @@ public sealed class DisplayChannel
     private readonly Lock _gate = new();
     private readonly Dictionary<uint, PixelBuffer> _surfaces = [];
     private readonly HashSet<ushort> _warned = [];
-    private readonly ImageResolver _resolver = new(PixmapCacheBudget, 2 * GlzWindowSize);
+    private readonly ImageResolver _resolver;
     private long _surfacePixels;
     private uint? _primaryId;
     private SpiceRect _dirty;
@@ -97,22 +97,53 @@ public sealed class DisplayChannel
     /// <param name="connection">Canale già collegato.</param>
     /// <param name="events">Destinazione degli eventi (non viene completata qui).</param>
     /// <param name="credit">Contropressione; <see langword="null"/> (test) pubblica ogni aggiornamento.</param>
-    public DisplayChannel(ChannelConnection connection, ChannelWriter<DisplayEvent> events, DisplayUpdateCredit? credit = null)
+    /// <param name="decoders">JPEG e video della piattaforma; <see langword="null"/>: nessuno.</param>
+    /// <param name="clock">Orologio multimediale del server: abilita i report dei flussi.</param>
+    public DisplayChannel(ChannelConnection connection, ChannelWriter<DisplayEvent> events, DisplayUpdateCredit? credit = null,
+        IMediaDecoders? decoders = null, MultimediaClock? clock = null)
     {
         _connection = connection;
         _events = events;
         _credit = credit;
+        _decoders = decoders;
+        _clock = clock;
+        _resolver = new ImageResolver(PixmapCacheBudget, 2 * GlzWindowSize, decoders?.Jpeg);
     }
 
-    /// <summary>Capacità annunciate dal client.</summary>
-    public static CapabilitySet Capabilities { get; } = CapabilitySet.FromBits([
-        (int)DisplayCapability.SizedStream,
-        (int)DisplayCapability.MonitorsConfig,
-        (int)DisplayCapability.PrefCompression,
-        (int)DisplayCapability.Lz4Compression,
-        // Multi-codec senza codec: il server non crea flussi video (MJPEG/H.264 arrivano con M5).
-        (int)DisplayCapability.MultiCodec,
-    ]);
+    /// <summary>Capacità annunciate dal client senza decoder della piattaforma (nessun codec video).</summary>
+    public static CapabilitySet Capabilities { get; } = CapabilitiesFor(null);
+
+    /// <summary>Capacità annunciate dal client: i codec video sono solo quelli decodificabili.</summary>
+    public static CapabilitySet CapabilitiesFor(IMediaDecoders? decoders)
+    {
+        List<int> bits =
+        [
+            (int)DisplayCapability.SizedStream,
+            (int)DisplayCapability.MonitorsConfig,
+            (int)DisplayCapability.PrefCompression,
+            (int)DisplayCapability.Lz4Compression,
+            // Multi-codec senza codec: il server non crea flussi video.
+            (int)DisplayCapability.MultiCodec,
+        ];
+        var codecs = VideoCodecsOf(decoders);
+        if (codecs.Count > 0)
+        {
+            bits.Add((int)DisplayCapability.StreamReport);
+            bits.Add((int)DisplayCapability.PrefVideoCodecType);
+        }
+        foreach (var codec in codecs)
+        {
+            bits.Add(codec switch
+            {
+                VideoCodecType.Mjpeg => (int)DisplayCapability.CodecMjpeg,
+                VideoCodecType.H264 => (int)DisplayCapability.CodecH264,
+                VideoCodecType.H265 => (int)DisplayCapability.CodecH265,
+                VideoCodecType.Vp8 => (int)DisplayCapability.CodecVp8,
+                _ => (int)DisplayCapability.CodecVp9,
+            });
+        }
+        return CapabilitySet.FromBits([.. bits]);
+    }
 
     /// <summary>Budget delle superfici in pixel (ridotto solo nei test).</summary>
     internal long SurfacePixelBudget { get; init; } = MaxSurfacePixels;
@@ -133,16 +164,33 @@ public sealed class DisplayChannel
                 await _connection.SendAsync(DisplayClientEncoder.PreferredCompression(ImageCompression.AutoGlz), cancellationToken)
                     .ConfigureAwait(false);
             }
+            var codecs = VideoCodecsOf(_decoders);
+            if (codecs.Count > 0 && _connection.ServerCaps.Contains((int)DisplayCapability.PrefVideoCodecType))
+            {
+                // Prima i codec decodificati in hardware; il server ripiega su quello che sa codificare.
+                await _connection.SendAsync(DisplayClientEncoder.PreferredVideoCodecs(codecs), cancellationToken).ConfigureAwait(false);
+            }
             while (true)
             {
                 var message = await _connection.NextMessageAsync(cancellationToken).ConfigureAwait(false);
                 Handle(message);
-                lock (_gate) Flush();
+                SpiceMessage[] reports;
+                lock (_gate)
+                {
+                    Flush();
+                    reports = [.. _pendingReports];
+                    _pendingReports.Clear();
+                }
+                foreach (var report in reports) await _connection.SendAsync(report, cancellationToken).ConfigureAwait(false);
             }
         }
         finally
         {
-            lock (_gate) _closed = true;
+            lock (_gate)
+            {
+                _closed = true;
+                DestroyAllStreams();
+            }
         }
     }
 
@@ -278,16 +326,30 @@ public sealed class DisplayChannel
             case DisplayServerMessage.Reset:
                 _resolver.InvalidateAllPixmaps();
                 _resolver.InvalidateAllPalettes();
+                DestroyAllStreams();
                 break;
             case DisplayServerMessage.Mark or DisplayServerMessage.Mode:
                 break;
-            case DisplayServerMessage.StreamCreate or DisplayServerMessage.StreamData or DisplayServerMessage.StreamDataSized
-                or DisplayServerMessage.StreamClip or DisplayServerMessage.StreamActivateReport:
-                // Nessun codec video annunciato (M5): non dovrebbero arrivare.
-                WarnOnce(message.Type, "flusso video non supportato");
+            case DisplayServerMessage.StreamCreate:
+                CreateStream(StreamCreate.Decode(payload.AsSpan()));
                 break;
-            case DisplayServerMessage.StreamDestroy or DisplayServerMessage.StreamDestroyAll
-                or DisplayServerMessage.QualityIndicator or DisplayServerMessage.GlScanoutUnix or DisplayServerMessage.GlDraw:
+            case DisplayServerMessage.StreamData or DisplayServerMessage.StreamDataSized:
+                StreamFrame(StreamData.Decode(payload, sized: message.Type == (ushort)DisplayServerMessage.StreamDataSized));
+                break;
+            case DisplayServerMessage.StreamClip:
+                var clip = StreamClip.Decode(payload);
+                if (_streams.TryGetValue(clip.StreamId, out var clipped)) clipped.Clip = clip.Clip;
+                break;
+            case DisplayServerMessage.StreamDestroy:
+                DestroyStream(DisplayDecoders.UInt32(payload));
+                break;
+            case DisplayServerMessage.StreamDestroyAll:
+                DestroyAllStreams();
+                break;
+            case DisplayServerMessage.StreamActivateReport:
+                ActivateReport(StreamActivateReport.Decode(payload));
+                break;
+            case DisplayServerMessage.QualityIndicator or DisplayServerMessage.GlScanoutUnix or DisplayServerMessage.GlDraw:
                 break; // non annunciati
             default:
                 WarnOnce(message.Type, "comando di disegno non supportato");

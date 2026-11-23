@@ -12,7 +12,8 @@ public sealed class ImageResolveException(string message, Exception? inner = nul
 /// a distanza (<c>CACHE_ME</c>, <c>FROM_CACHE</c>, <c>INVAL_*</c>). Porting di
 /// <c>SpiceChannels/ImageResolver.swift</c>. Non thread-safe: un'istanza per canale display.
 /// </summary>
-public sealed class ImageResolver(long pixmapCacheBudget, int glzWindowPixels)
+/// <remarks>Senza decoder JPEG della piattaforma le immagini JPEG non si risolvono.</remarks>
+public sealed class ImageResolver(long pixmapCacheBudget, int glzWindowPixels, IJpegDecoder? jpeg = null)
 {
     internal const int MaxCachedPalettes = 4096;
 
@@ -71,9 +72,14 @@ public sealed class ImageResolver(long pixmapCacheBudget, int glzWindowPixels)
                 case ImagePayload.Lz4 lz4:
                     pixels = Lz4ImageDecoder.Decode(lz4.Data.Span, (int)descriptor.Width, (int)descriptor.Height);
                     break;
+                case ImagePayload.Jpeg photo when jpeg is not null:
+                    pixels = Checked(jpeg.Decode(photo.Data.Span), descriptor);
+                    break;
+                case ImagePayload.JpegAlpha alpha when jpeg is not null:
+                    pixels = Checked(JpegAlphaDecoder.Decode(jpeg, alpha.Data.Span, (int)alpha.JpegSize), descriptor);
+                    break;
                 default:
-                    // JPEG e JPEG con alfa arrivano con M5 (WIC nell'app).
-                    throw new ImageResolveException($"formato {descriptor.Type} non ancora supportato");
+                    throw new ImageResolveException($"formato {descriptor.Type} non supportato");
             }
         }
         catch (CodecException error)
@@ -84,6 +90,12 @@ public sealed class ImageResolver(long pixmapCacheBudget, int glzWindowPixels)
         if ((descriptor.Flags & (ImageOptions.CacheMe | ImageOptions.CacheReplaceMe)) != 0) Store(pixels, descriptor.Id);
         return pixels;
     }
+
+    /// <summary>Il JPEG deve avere la misura dichiarata nel descrittore (il disegno si fida di quella).</summary>
+    private static PixelBuffer Checked(PixelBuffer pixels, ImageDescriptor descriptor) =>
+        pixels.Width == descriptor.Width && pixels.Height == descriptor.Height
+            ? pixels
+            : throw CodecException.Corrupt($"jpeg {pixels.Width}x{pixels.Height} invece di {descriptor.Width}x{descriptor.Height}");
 
     /// <summary>zlib (RFC 1950) per <c>ZLIB_GLZ_RGB</c>; la dimensione decompressa è nota.</summary>
     private static byte[] Inflate(ReadOnlyMemory<byte> data, uint expectedSize)

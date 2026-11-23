@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using SpiceKit.Channels;
+using SpiceKit.Codecs;
 using SpiceKit.Transport;
 using SpiceKit.VVFile;
 using SpiceKit.Wire;
@@ -82,6 +83,15 @@ public sealed class SpiceSession : IAsyncDisposable
     /// <summary>Contropressione verso il renderer: <see cref="DisplayUpdateCredit.Consumed"/> dopo ogni aggiornamento applicato.</summary>
     public DisplayUpdateCredit DisplayCredit { get; } = new();
 
+    /// <summary>JPEG e video della piattaforma (SpiceKit.Windows); da impostare prima di <see cref="ConnectAsync"/>.</summary>
+    public IMediaDecoders? MediaDecoders { get; init; }
+
+    /// <summary>Fotogrammi video applicati e scartati finora (diagnostica e autoverifica).</summary>
+    public (int Decoded, int Dropped) VideoFrames => Volatile.Read(ref _displayChannel)?.VideoFrames ?? (0, 0);
+
+    private readonly MultimediaClock _clock = new();
+    private DisplayChannel? _displayChannel;
+
     /// <summary>Forma, posizione e visibilità del cursore dell'ospite; si completa alla fine della sessione.</summary>
     public ChannelReader<CursorEvent> CursorEvents => _cursor.Reader;
 
@@ -145,7 +155,7 @@ public sealed class SpiceSession : IAsyncDisposable
         try
         {
             var connection = await _opener.OpenAsync(ChannelType.Main, 0, 0, MainChannel.Capabilities, _stop.Token).ConfigureAwait(false);
-            var main = new MainChannel(connection);
+            var main = new MainChannel(connection, _clock);
             lock (_lock)
             {
                 // L'utente può aver chiuso mentre si collegava.
@@ -238,7 +248,8 @@ public sealed class SpiceSession : IAsyncDisposable
                 switch (connection.Type)
                 {
                     case ChannelType.Display:
-                        var display = new DisplayChannel(connection, _display.Writer, DisplayCredit);
+                        var display = new DisplayChannel(connection, _display.Writer, DisplayCredit, MediaDecoders, _clock);
+                        Volatile.Write(ref _displayChannel, display);
                         Spawn(name, critical: true, () => display.RunAsync(_stop.Token));
                         break;
                     case ChannelType.Inputs:
@@ -266,9 +277,9 @@ public sealed class SpiceSession : IAsyncDisposable
         SpiceLog.Info("session", "sessione connessa");
     }
 
-    private static CapabilitySet CapabilitiesOf(ChannelType type) => type switch
+    private CapabilitySet CapabilitiesOf(ChannelType type) => type switch
     {
-        ChannelType.Display => DisplayChannel.Capabilities,
+        ChannelType.Display => DisplayChannel.CapabilitiesFor(MediaDecoders),
         ChannelType.Inputs => InputsChannel.Capabilities,
         _ => CursorChannel.Capabilities,
     };
