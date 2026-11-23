@@ -50,6 +50,55 @@ public enum MainServerMessage : ushort
     MigrateDstSeamlessNack,
 }
 
+/// <summary><c>SPICE_MSG_DISPLAY_*</c>.</summary>
+public enum DisplayServerMessage : ushort
+{
+    Mode = 101,
+    Mark,
+    Reset,
+    CopyBits,
+    InvalList,
+    InvalAllPixmaps,
+    InvalPalette,
+    InvalAllPalettes,
+    StreamCreate = 122,
+    StreamData,
+    StreamClip,
+    StreamDestroy,
+    StreamDestroyAll,
+    DrawFill = 302,
+    DrawOpaque,
+    DrawCopy,
+    DrawBlend,
+    DrawBlackness,
+    DrawWhiteness,
+    DrawInvers,
+    DrawRop3,
+    DrawStroke,
+    DrawText,
+    DrawTransparent,
+    DrawAlphaBlend,
+    SurfaceCreate,
+    SurfaceDestroy,
+    StreamDataSized,
+    MonitorsConfig,
+    DrawComposite,
+    StreamActivateReport,
+    GlScanoutUnix,
+    GlDraw,
+    QualityIndicator,
+}
+
+/// <summary><c>SPICE_MSGC_DISPLAY_*</c>.</summary>
+public enum DisplayClientMessage : ushort
+{
+    Init = 101,
+    StreamReport,
+    PreferredCompression,
+    GlDrawDone,
+    PreferredVideoCodecType,
+}
+
 /// <summary><c>SPICE_MSGC_MAIN_*</c>.</summary>
 public enum MainClientMessage : ushort
 {
