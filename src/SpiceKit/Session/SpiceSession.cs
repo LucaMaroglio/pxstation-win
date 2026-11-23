@@ -240,14 +240,15 @@ public sealed partial class SpiceSession : IAsyncDisposable
     /// Canali da collegare. L'elenco viene dal server: duplicati scartati e numero di connessioni
     /// limitato (un canale per tipo).
     /// </summary>
-    internal static IReadOnlyList<ChannelEntry> Wanted(IReadOnlyList<ChannelEntry> offered) =>
-        [.. offered.Distinct().Where(e => e.Id == 0 && e.Type is ChannelType.Display or ChannelType.Inputs or ChannelType.Cursor)];
+    internal static IReadOnlyList<ChannelEntry> Wanted(IReadOnlyList<ChannelEntry> offered, AudioSupport audio = default) =>
+        [.. offered.Distinct().Where(e => e.Id == 0 && (e.Type is ChannelType.Display or ChannelType.Inputs or ChannelType.Cursor
+            || (e.Type == ChannelType.Playback && audio.Playback) || (e.Type == ChannelType.Record && audio.Record)))];
 
     private async Task OpenChannelsAsync(IReadOnlyList<ChannelEntry> offered)
     {
         if (_channelsRequested || _sessionId is not { } sessionId) return;
         _channelsRequested = true;
-        var wanted = Wanted(offered);
+        var wanted = Wanted(offered, Audio);
         SpiceLog.Info("session", $"il server offre {offered.Count} canali ({string.Join(", ", offered)}); se ne collegano {wanted.Count}");
         try
         {
@@ -285,6 +286,16 @@ public sealed partial class SpiceSession : IAsyncDisposable
                         var cursor = new CursorChannel(connection, _cursor.Writer);
                         Spawn(name, critical: false, () => cursor.RunAsync(_stop.Token));
                         break;
+                    case ChannelType.Playback:
+                        // L'audio non è critico: senza, la sessione resta usabile.
+                        var playback = new PlaybackChannel(connection, _playback.Writer);
+                        Spawn(name, critical: false, () => playback.RunAsync(_stop.Token));
+                        break;
+                    case ChannelType.Record:
+                        var record = new RecordChannel(connection, _record.Writer);
+                        Volatile.Write(ref _recordChannel, record);
+                        Spawn(name, critical: false, () => record.RunAsync(_stop.Token));
+                        break;
                 }
             }
         }
@@ -304,6 +315,8 @@ public sealed partial class SpiceSession : IAsyncDisposable
     {
         ChannelType.Display => DisplayChannel.CapabilitiesFor(MediaDecoders),
         ChannelType.Inputs => InputsChannel.Capabilities,
+        ChannelType.Playback => PlaybackChannel.Capabilities(Audio.OpusPlayback),
+        ChannelType.Record => RecordChannel.Capabilities,
         _ => CursorChannel.Capabilities,
     };
 
@@ -356,6 +369,9 @@ public sealed partial class SpiceSession : IAsyncDisposable
         _display.Writer.TryComplete();
         _cursor.Writer.TryComplete();
         _clipboard.Writer.TryComplete();
+        _playback.Writer.TryComplete();
+        _record.Writer.TryComplete();
+        Volatile.Write(ref _recordChannel, null);
         Volatile.Write(ref _inputs, null);
         AgentGone();
     }
