@@ -10,6 +10,9 @@ namespace WindowsSpiceClient.Display;
 /// <summary>Adattatore grafico in uso, mostrato nella finestra di diagnostica.</summary>
 public sealed record RendererInfo(string AdapterName, string FeatureLevel, bool IsSoftware);
 
+/// <summary>Pixel letti da una texture (BGRA, righe compatte, dall'alto in basso).</summary>
+public sealed record SurfaceCapture(int Width, int Height, byte[] Bgra);
+
 /// <summary>
 /// Swap chain Direct3D 11 collegata a uno <see cref="SwapChainPanel"/> (AGENTS.md §7).
 /// </summary>
@@ -17,10 +20,14 @@ public sealed record RendererInfo(string AdapterName, string FeatureLevel, bool 
 /// <list type="bullet">
 /// <item>Dispositivo hardware; se manca (VM senza GPU) si usa WARP, il rasterizzatore software.</item>
 /// <item>Swap chain "for composition" in modello flip, BGRA8, 2 buffer.</item>
-/// <item>I buffer hanno la dimensione in pixel fisici (dimensione del pannello × scala di
-///   composizione) e una trasformazione inversa li riporta in DIP: nessun ridimensionamento
-///   sfocato sugli schermi HiDPI.</item>
+/// <item>Senza schermo della VM i buffer hanno la misura del pannello in pixel fisici e una
+///   trasformazione inversa li riporta in DIP: nessuna sfocatura sugli schermi HiDPI.</item>
+/// <item>Con lo schermo della VM la superficie primaria vive in una texture della sua misura,
+///   aggiornata solo nei rettangoli cambiati; a ogni fotogramma la texture si copia nel buffer
+///   (stessa misura) e la trasformazione della swap chain la adatta al pannello mantenendo le
+///   proporzioni (lo scalamento lo fa il compositore: nessuno shader da compilare).</item>
 /// </list>
+/// Va usato solo dal thread dell'interfaccia.
 /// </remarks>
 public sealed class D3D11Presenter : IDisposable
 {
@@ -33,8 +40,11 @@ public sealed class D3D11Presenter : IDisposable
     private readonly ID3D11DeviceContext _context;
     private readonly IDXGISwapChain1 _swapChain;
     private ID3D11RenderTargetView? _target;
-    private int _width = 1;
-    private int _height = 1;
+    private ID3D11Texture2D? _surface;
+    private int _bufferWidth = 1;
+    private int _bufferHeight = 1;
+    private double _panelWidth = 1;
+    private double _panelHeight = 1;
     private float _scaleX = 1;
     private float _scaleY = 1;
 
@@ -73,46 +83,93 @@ public sealed class D3D11Presenter : IDisposable
 
     public RendererInfo Info { get; }
 
-    /// <summary>Adatta i buffer al pannello (dimensioni in DIP, scala di composizione).</summary>
+    /// <summary>Misura della superficie della VM, se c'è.</summary>
+    public (int Width, int Height)? SurfaceSize { get; private set; }
+
+    /// <summary>Il pannello è cambiato (misura in DIP, scala di composizione).</summary>
     public void Resize(double widthDip, double heightDip, float scaleX, float scaleY)
     {
-        var width = Math.Max(1, (int)Math.Round(widthDip * scaleX));
-        var height = Math.Max(1, (int)Math.Round(heightDip * scaleY));
-        if (width == _width && height == _height && scaleX == _scaleX && scaleY == _scaleY)
-        {
-            return;
-        }
-
-        _target?.Dispose();
-        _target = null;
-        _swapChain.ResizeBuffers(2, (uint)width, (uint)height, Format.Unknown, SwapChainFlags.None).CheckError();
-        _width = width;
-        _height = height;
+        _panelWidth = Math.Max(1, widthDip);
+        _panelHeight = Math.Max(1, heightDip);
         _scaleX = scaleX;
         _scaleY = scaleY;
-
-        using (var swapChain2 = _swapChain.QueryInterfaceOrNull<IDXGISwapChain2>())
+        if (SurfaceSize is null)
         {
-            if (swapChain2 is not null)
-            {
-                swapChain2.MatrixTransform = Matrix3x2.CreateScale(1 / scaleX, 1 / scaleY);
-            }
+            ResizeBuffers(Math.Max(1, (int)Math.Round(widthDip * scaleX)), Math.Max(1, (int)Math.Round(heightDip * scaleY)));
         }
-
-        CreateTarget();
+        UpdateTransform();
     }
 
-    /// <summary>Riempie lo schermo con un colore e presenta il frame.</summary>
-    public void Clear(float red, float green, float blue)
+    /// <summary>(Ri)crea la superficie della VM, nera, e porta i buffer alla sua misura.</summary>
+    public void SetSurface(int width, int height)
     {
-        if (_target is null)
+        _surface?.Dispose();
+        _surface = _device.CreateTexture2D(new Texture2DDescription
+        {
+            Width = (uint)width,
+            Height = (uint)height,
+            MipLevels = 1,
+            ArraySize = 1,
+            Format = Format.B8G8R8A8_UNorm,
+            SampleDescription = new SampleDescription(1, 0),
+            Usage = ResourceUsage.Default,
+            BindFlags = BindFlags.ShaderResource,
+        });
+        _surface.DebugName = "superficie primaria SPICE";
+        SurfaceSize = (width, height);
+        ResizeBuffers(width, height);
+        UpdateTransform();
+    }
+
+    /// <summary>La VM non ha più una superficie primaria.</summary>
+    public void ClearSurface()
+    {
+        _surface?.Dispose();
+        _surface = null;
+        SurfaceSize = null;
+        Resize(_panelWidth, _panelHeight, _scaleX, _scaleY);
+    }
+
+    /// <summary>Copia nella texture i pixel di un rettangolo (BGRA, <paramref name="width"/> × <paramref name="height"/> compatti).</summary>
+    public unsafe void Update(int left, int top, int width, int height, uint[] pixels)
+    {
+        ArgumentNullException.ThrowIfNull(pixels);
+        if (_surface is null || SurfaceSize is not var (sw, sh)) return;
+        // Il canale display limita già i rettangoli alla superficie: qui solo un controllo di sicurezza.
+        if (left < 0 || top < 0 || width <= 0 || height <= 0 || left + width > sw || top + height > sh
+            || pixels.Length < width * height)
         {
             return;
         }
+        var box = new Box(left, top, 0, left + width, top + height, 1);
+        fixed (uint* data = pixels)
+        {
+            _context.UpdateSubresource(_surface, 0, box, (nint)data, (uint)(width * 4), 0);
+        }
+    }
 
-        _context.OMSetRenderTargets(_target);
-        _context.ClearRenderTargetView(_target, new Color4(red, green, blue, 1));
-        _swapChain.Present(1, PresentFlags.None);
+    /// <summary>Presenta un fotogramma: lo schermo della VM, oppure un colore di sfondo.</summary>
+    public void Present(float red = 0, float green = 0, float blue = 0)
+    {
+        if (_surface is not null)
+        {
+            using var back = _swapChain.GetBuffer<ID3D11Texture2D>(0);
+            _context.CopyResource(back, _surface);
+        }
+        else if (_target is not null)
+        {
+            _context.OMSetRenderTargets(_target);
+            _context.ClearRenderTargetView(_target, new Color4(red, green, blue, 1));
+        }
+        // Senza attesa del vsync: la swap chain per composizione non strappa e il thread
+        // dell'interfaccia non si blocca.
+        _swapChain.Present(0, PresentFlags.None);
+    }
+
+    /// <summary>Riempie lo schermo con un colore e presenta il frame (solo senza superficie).</summary>
+    public void Clear(float red, float green, float blue)
+    {
+        if (_surface is null) Present(red, green, blue);
     }
 
     /// <summary>
@@ -129,38 +186,79 @@ public sealed class D3D11Presenter : IDisposable
         _context.OMSetRenderTargets(_target);
         _context.ClearRenderTargetView(_target, new Color4(red, green, blue, 1));
         using var back = _swapChain.GetBuffer<ID3D11Texture2D>(0);
-        var description = back.Description;
+        var capture = Read(back);
+        _swapChain.Present(0, PresentFlags.None);
+        var offset = ((capture.Height / 2 * capture.Width) + (capture.Width / 2)) * 4;
+        return BitConverter.ToUInt32(capture.Bgra, offset);
+    }
+
+    /// <summary>Autoverifica: i pixel della superficie della VM così come sono sulla GPU.</summary>
+    public SurfaceCapture? CaptureSurface() => _surface is null ? null : Read(_surface);
+
+    public void Dispose()
+    {
+        _surface?.Dispose();
+        _target?.Dispose();
+        _swapChain.Dispose();
+        _context.Dispose();
+        _device.Dispose();
+    }
+
+    private unsafe SurfaceCapture Read(ID3D11Texture2D texture)
+    {
+        var description = texture.Description;
         description.Usage = ResourceUsage.Staging;
         description.BindFlags = BindFlags.None;
         description.CPUAccessFlags = CpuAccessFlags.Read;
         description.MiscFlags = ResourceOptionFlags.None;
         using var staging = _device.CreateTexture2D(description);
-        _context.CopyResource(staging, back);
+        _context.CopyResource(staging, texture);
         var mapped = _context.Map(staging, 0, MapMode.Read);
-        uint pixel;
         try
         {
-            unsafe
+            int width = (int)description.Width, height = (int)description.Height;
+            var bytes = new byte[width * height * 4];
+            for (var y = 0; y < height; y++)
             {
-                var row = (byte*)mapped.DataPointer + (description.Height / 2 * mapped.RowPitch);
-                pixel = ((uint*)row)[description.Width / 2];
+                new ReadOnlySpan<byte>((byte*)mapped.DataPointer + (y * mapped.RowPitch), width * 4)
+                    .CopyTo(bytes.AsSpan(y * width * 4));
             }
+            return new SurfaceCapture(width, height, bytes);
         }
         finally
         {
             _context.Unmap(staging, 0);
         }
-
-        _swapChain.Present(1, PresentFlags.None);
-        return pixel;
     }
 
-    public void Dispose()
+    private void ResizeBuffers(int width, int height)
     {
+        if (width == _bufferWidth && height == _bufferHeight) return;
         _target?.Dispose();
-        _swapChain.Dispose();
-        _context.Dispose();
-        _device.Dispose();
+        _target = null;
+        _swapChain.ResizeBuffers(2, (uint)width, (uint)height, Format.Unknown, SwapChainFlags.None).CheckError();
+        _bufferWidth = width;
+        _bufferHeight = height;
+        CreateTarget();
+    }
+
+    /// <summary>
+    /// Trasformazione da pixel del buffer a DIP del pannello: inversa della scala di composizione
+    /// senza superficie; con la superficie, adattamento proporzionale e centratura.
+    /// </summary>
+    private void UpdateTransform()
+    {
+        using var swapChain2 = _swapChain.QueryInterfaceOrNull<IDXGISwapChain2>();
+        if (swapChain2 is null) return;
+        if (SurfaceSize is not var (width, height))
+        {
+            swapChain2.MatrixTransform = Matrix3x2.CreateScale(1 / _scaleX, 1 / _scaleY);
+            return;
+        }
+        var fit = (float)Math.Min(_panelWidth / width, _panelHeight / height);
+        var offsetX = (float)((_panelWidth - (width * fit)) / 2);
+        var offsetY = (float)((_panelHeight - (height * fit)) / 2);
+        swapChain2.MatrixTransform = Matrix3x2.CreateScale(fit) * Matrix3x2.CreateTranslation(offsetX, offsetY);
     }
 
     private void CreateTarget()

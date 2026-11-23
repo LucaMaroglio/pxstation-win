@@ -55,17 +55,22 @@ windows-spice-client/
 ├── WindowsSpiceClient.sln
 ├── src/
 │   ├── SpiceKit/                net10.0, NESSUNA dipendenza da WinUI/Direct3D
-│   │   ├── Wire/                ByteReader, ByteWriter, WireException (M0)
+│   │   ├── Wire/                ByteReader, ByteWriter, WireException (M0); link, messaggi base/main (M2);
+│   │   │                        Geometry, Images, DisplayMessages (M3)
 │   │   ├── VVFile/              VVFileParser, ConnectionProfile, SecretTicket, Hotkey (M1)
 │   │   ├── UsbRedirWire/        UsbFilter (M1; il resto in M7)
 │   │   ├── Proxmox/             ProxmoxClient (API + regole TLS), modelli, ProxmoxException (M1)
 │   │   ├── Transport/           TcpConnector (TCP, proxy CONNECT, TLS), TlsVerifier, ChannelLinker,
 │   │   │                        SpiceEndpoint, HostSubject/Pem, RsaTicketEncryptor (M2)
-│   │   ├── Channels/            ChannelConnection (protocollo base), ChannelOpener, MainChannel, SpiceLog (M2)
+│   │   ├── Codecs/              PixelBuffer + Canvas (operazioni raster), BitmapDecoder, LzDecoder,
+│   │   │                        QuicDecoder/QuicModel, GlzDecoder, Lz4Decoder (M3)
+│   │   ├── Channels/            ChannelConnection (protocollo base), ChannelOpener, MainChannel, SpiceLog (M2);
+│   │   │                        DisplayChannel (superfici, contropressione), ImageResolver (cache) (M3)
 │   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2)
 │   └── WindowsSpiceClient/      app WinUI 3
 │       ├── Assets/              app.ico (multi-risoluzione), PNG
-│       ├── Display/             D3D11Presenter, SwapChainPanelInterop
+│       ├── Display/             D3D11Presenter (texture della superficie, adattamento con la trasformazione
+│       │                        della swap chain), SwapChainPanelInterop
 │       ├── Diagnostics/         AppLog, SelfTest
 │       ├── Shell/               SingleInstance (AppInstance; Main in Program.cs) (M2)
 │       ├── Services/            AppController, ServerStore, Settings, CredentialStore,
@@ -76,7 +81,7 @@ windows-spice-client/
 └── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
 ```
 
-Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Agent,Codecs,
+Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Agent,
 UsbEmulation}`, il progetto `SpiceKit.Windows` (WASAPI, WinSCard, UsbDk,
 Media Foundation; da creare quando serve la prima di queste parti) e, nell'app, `Input/`
 (e in `Shell/` area di notifica e notifiche). Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
@@ -118,7 +123,9 @@ tools\build.ps1 -Spice         # + autoverifica SPICE contro QEMU per Windows (s
   `selftest_proxmox.py`) usa il finto Proxmox e prova anche la connessione con `spiceproxy` e
   la sessione SPICE che ne segue; con `WSC_SELFTEST_VV=a.vv;b.vv` (impostata da
   `selftest_spice.py`) apre quei file e riporta lo stato SPICE di ciascuno (QEMU in chiaro, TLS
-  con CA e `host-subject` attraverso un proxy CONNECT, ticket errato).
+  con CA e `host-subject` attraverso un proxy CONNECT, ticket errato). Per ogni sessione collegata
+  salva lo schermo della VM letto dalla texture Direct3D in `screen-<nome>.png` (con le VM di prova:
+  il testo del BIOS e di iPXE, 720×400), perché `RenderTargetBitmap` mostra lo SwapChainPanel nero.
   **Guardare i PNG** dopo ogni modifica all'interfaccia.
   **Usarla al posto delle catture dello schermo:** nella VM di sviluppo (senza GPU, sessione
   remota) `CopyFromScreen` e `PrintWindow` restituiscono fotogrammi vecchi e le finestre a
@@ -179,5 +186,5 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | **M0** – soluzione, app WinUI 3 con icona, SpiceKit + test, swap chain D3D11, build locale | ✅ 23/11/2026 |
 | M1 – `.vv`, API Proxmox, Gestione credenziali, finestre Benvenuto / Macchine virtuali / Preferenze | ✅ 23/11/2026 |
 | M2 – trasporto (TCP, TLS, proxy CONNECT), link e autenticazione, canale main; istanza unica | ✅ 23/11/2026 |
-| M3 – display: superfici, comandi di disegno, decoder LZ e QUIC, presentazione D3D11 | da fare |
+| M3 – display: superfici, comandi di disegno, decoder LZ, QUIC, GLZ e LZ4, presentazione D3D11 | ✅ 23/11/2026 |
 | M4 … M9 | vedi PIANO.md §4 |

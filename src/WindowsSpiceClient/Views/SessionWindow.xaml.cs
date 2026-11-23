@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using SpiceKit.Channels;
 using SpiceKit.Proxmox;
 using SpiceKit.Session;
 using SpiceKit.VVFile;
@@ -12,8 +13,7 @@ namespace WindowsSpiceClient.Views;
 
 /// <summary>
 /// Finestra di una sessione: collega la sessione SPICE appena aperta (i ticket Proxmox scadono in
-/// circa 30 secondi) e ne mostra lo stato; prepara la superficie Direct3D 11, su cui lo schermo
-/// della VM verrà disegnato con M3.
+/// circa 30 secondi), ne mostra lo stato e disegna lo schermo della VM con Direct3D 11.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001",
     Justification = "Una Window non è IDisposable: presenter e ticket vengono rilasciati nell'evento Closed.")]
@@ -24,6 +24,7 @@ public sealed partial class SessionWindow : Window
     private readonly string _summary;
     private string? _guestName;
     private bool _agent;
+    private bool _screenVisible;
 
     internal SessionWindow(ConnectionProfile? profile, ProxmoxVMRef? reference, string? vmName)
     {
@@ -37,6 +38,7 @@ public sealed partial class SessionWindow : Window
             Closed += (_, _) => _ = _session.DisposeAsync().AsTask();
             ShowState(SessionState.Connecting);
             _ = RunSessionAsync(_session);
+            _ = RunDisplayAsync(_session);
         }
 
         // Diagnostica: WSC_RENDERER=none esclude Direct3D (per distinguere problemi del renderer da quelli di WinUI).
@@ -78,6 +80,60 @@ public sealed partial class SessionWindow : Window
     /// <summary>Testo mostrato nella barra di stato (per l'autoverifica).</summary>
     internal string StatusText => $"{ProfileInfo.Title} · {ProfileInfo.Message}";
 
+    /// <summary>Aggiornamenti dello schermo applicati finora (per l'autoverifica).</summary>
+    internal int ScreenUpdates { get; private set; }
+
+    /// <summary>Lo schermo della VM come si trova nella texture Direct3D (per l'autoverifica).</summary>
+    internal SurfaceCapture? CaptureScreen() => _presenter?.CaptureSurface();
+
+    /// <summary>
+    /// Applica gli eventi del canale display sul thread dell'interfaccia: tutti quelli in coda,
+    /// poi un solo fotogramma. Ogni aggiornamento restituisce il credito al canale.
+    /// </summary>
+    private async Task RunDisplayAsync(SpiceSession session)
+    {
+        var reader = session.DisplayEvents;
+        while (await reader.WaitToReadAsync())
+        {
+            var present = false;
+            while (reader.TryRead(out var value))
+            {
+                switch (value)
+                {
+                    case DisplayEvent.PrimarySurfaceCreated created:
+                        AppLog.Info($"Schermo della VM: {created.Width}x{created.Height}");
+                        _presenter?.SetSurface(created.Width, created.Height);
+                        ShowScreen(true);
+                        present = true;
+                        break;
+                    case DisplayEvent.PrimarySurfaceDestroyed:
+                        _presenter?.ClearSurface();
+                        present = true;
+                        break;
+                    case DisplayEvent.Update update:
+                        var rect = update.Surface.Rect;
+                        _presenter?.Update(rect.Left, rect.Top, rect.Width, rect.Height, update.Surface.Pixels);
+                        session.DisplayCredit.Consumed();
+                        ScreenUpdates++;
+                        present = true;
+                        break;
+                    case DisplayEvent.MonitorsConfig monitors:
+                        AppLog.Info($"Configurazione monitor dal server: {monitors.Heads.Count} teste");
+                        break;
+                }
+            }
+            if (present) _presenter?.Present();
+        }
+    }
+
+    /// <summary>Con lo schermo della VM visibile le barre informative lasciano tutto lo spazio al display.</summary>
+    private void ShowScreen(bool visible)
+    {
+        _screenVisible = visible;
+        RendererInfo.Visibility = visible ? Visibility.Collapsed : Visibility.Visible; // anche il suo margine
+        if (_session?.State.Kind == SessionStateKind.Connected) ProfileInfo.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private async Task RunSessionAsync(SpiceSession session)
     {
         await session.ConnectAsync();
@@ -115,6 +171,8 @@ public sealed partial class SessionWindow : Window
     private void ShowState(SessionState state)
     {
         ConnectingProgress.Visibility = state.Kind == SessionStateKind.Connecting ? Visibility.Visible : Visibility.Collapsed;
+        // Lo stato resta visibile finché non c'è lo schermo della VM, e torna se la sessione finisce.
+        ProfileInfo.Visibility = state.Kind == SessionStateKind.Connected && _screenVisible ? Visibility.Collapsed : Visibility.Visible;
         switch (state.Kind)
         {
             case SessionStateKind.Connecting:
@@ -181,7 +239,7 @@ public sealed partial class SessionWindow : Window
         var height = DisplayPanel.ActualHeight;
         if (width < 1 || height < 1) return;
         _presenter.Resize(width, height, DisplayPanel.CompositionScaleX, DisplayPanel.CompositionScaleY);
-        // Colore di prova: il grigio-blu dell'icona. In M3 qui si disegna la superficie primaria.
-        _presenter.Clear(0.13f, 0.18f, 0.27f);
+        // Lo schermo della VM, oppure (prima che arrivi) il nero dello sfondo.
+        _presenter.Present();
     }
 }

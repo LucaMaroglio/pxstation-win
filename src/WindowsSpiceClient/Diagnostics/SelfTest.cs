@@ -111,6 +111,10 @@ internal static class SelfTest
                 {
                     var opened = app.Sessions[^1];
                     lines.Add(await SessionResultAsync(opened, $"spice {running.Name}"));
+                    if (opened.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected)
+                    {
+                        lines.Add(await ScreenResultAsync(opened, directory, running.Name));
+                    }
                     opened.Close();
                 }
             }
@@ -136,6 +140,10 @@ internal static class SelfTest
             var name = Path.GetFileNameWithoutExtension(path);
             var window = app.OpenSession(VVFileParser.ReadFile(path).Profile, null, name);
             lines.Add(await SessionResultAsync(window, $"spice {name}"));
+            if (window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected)
+            {
+                lines.Add(await ScreenResultAsync(window, directory, name));
+            }
             await SettleAsync(window.RootElement, 300);
             lines.Add(await CaptureAsync(window.RootElement, directory, $"session-{name}.png"));
             window.Close();
@@ -203,6 +211,42 @@ internal static class SelfTest
         };
     }
 
+    /// <summary>
+    /// Attende lo schermo della VM e lo salva dalla texture Direct3D in <c>screen-&lt;nome&gt;.png</c>
+    /// (RenderTargetBitmap non vede lo SwapChainPanel). Con il firmware della VM di prova lo schermo
+    /// ha testo: si contano i colori distinti per distinguere un'immagine vera da una vuota.
+    /// </summary>
+    private static async Task<string> ScreenResultAsync(SessionWindow window, string directory, string name)
+    {
+        // Gli aggiornamenti continuano finché il firmware scrive: si attende che arrivino e si fermino un attimo.
+        await WaitForAsync(() => window.ScreenUpdates > 0, TimeSpan.FromSeconds(20));
+        var last = -1;
+        for (var i = 0; i < 20 && window.ScreenUpdates != last; i++)
+        {
+            last = window.ScreenUpdates;
+            await Task.Delay(500);
+        }
+        if (window.CaptureScreen() is not { } capture) return $"schermo {name}: ERRORE nessuna superficie ({window.ScreenUpdates} aggiornamenti)";
+        var colors = new HashSet<uint>();
+        for (var i = 0; i < capture.Bgra.Length && colors.Count < 1000; i += 4) colors.Add(BitConverter.ToUInt32(capture.Bgra, i));
+        var file = $"screen-{name}.png";
+        await File.WriteAllBytesAsync(Path.Combine(directory, file), await EncodePngAsync(capture.Bgra, capture.Width, capture.Height));
+        return string.Create(CultureInfo.InvariantCulture,
+            $"schermo {name}: {(colors.Count > 1 ? "OK" : "VUOTO")} {capture.Width}x{capture.Height}, {window.ScreenUpdates} aggiornamenti, {colors.Count} colori -> {file}");
+    }
+
+    private static async Task<byte[]> EncodePngAsync(byte[] bgra, int width, int height)
+    {
+        using var stream = new InMemoryRandomAccessStream();
+        var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)width, (uint)height, 96, 96, bgra);
+        await encoder.FlushAsync();
+        var png = new byte[stream.Size];
+        stream.Seek(0);
+        await stream.ReadAsync(png.AsBuffer(), (uint)png.Length, InputStreamOptions.None);
+        return png;
+    }
+
     private static async Task WaitForAsync(Func<bool> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
@@ -216,14 +260,7 @@ internal static class SelfTest
             var bitmap = new RenderTargetBitmap();
             await bitmap.RenderAsync(root);
             var pixels = await bitmap.GetPixelsAsync();
-            using var stream = new InMemoryRandomAccessStream();
-            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
-            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
-                (uint)bitmap.PixelWidth, (uint)bitmap.PixelHeight, 96, 96, pixels.ToArray());
-            await encoder.FlushAsync();
-            var png = new byte[stream.Size];
-            stream.Seek(0);
-            await stream.ReadAsync(png.AsBuffer(), (uint)png.Length, InputStreamOptions.None);
+            var png = await EncodePngAsync(pixels.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight);
             await File.WriteAllBytesAsync(Path.Combine(directory, name), png);
             return string.Create(CultureInfo.InvariantCulture, $"xaml: OK {bitmap.PixelWidth}x{bitmap.PixelHeight} -> {name}");
         }

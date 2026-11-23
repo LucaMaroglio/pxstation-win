@@ -26,8 +26,10 @@
             </InfoBar.Content>
         </InfoBar>
 
-        <!-- Superficie Direct3D 11: qui verrà disegnato lo schermo della VM (M3). -->
-        <SwapChainPanel x:Name="DisplayPanel" Grid.Row="2" Margin="12,0,12,0" />
+        <!-- Schermo della VM (Direct3D 11): adattato al pannello mantenendo le proporzioni, bordi neri. -->
+        <Border Grid.Row="2" Background="Black">
+            <SwapChainPanel x:Name="DisplayPanel" />
+        </Border>
 
         <InfoBar x:Name="RendererInfo" Grid.Row="3" Margin="12" IsOpen="True" IsClosable="True"
                  Severity="Informational" Title="Renderer" />

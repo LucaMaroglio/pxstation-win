@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
   Testi dell'interfaccia. Quelli condivisi con il client Linux vengono da
   linux_spice_client/core/texts.py (adattati a Windows: Gestione credenziali al posto del
@@ -150,7 +150,7 @@ Il token API di questo server verrà eliminato da Gestione credenziali di Window
   <data name="SummaryVerified" xml:space="preserve"><value>certificato da verificare con la CA e il soggetto del file</value></data>
   <data name="SessionConnecting" xml:space="preserve"><value>Connessione in corso…</value></data>
   <data name="SessionConnected" xml:space="preserve"><value>Connesso</value></data>
-  <data name="SessionConnectedDetail" xml:space="preserve"><value>Canali collegati: {0}. Lo schermo della macchina virtuale arriva con la milestone M3.</value></data>
+  <data name="SessionConnectedDetail" xml:space="preserve"><value>Canali collegati: {0}.</value></data>
   <data name="SessionGuestName" xml:space="preserve"><value>Macchina virtuale: {0}</value></data>
   <data name="SessionAgent" xml:space="preserve"><value>agente SPICE attivo</value></data>
   <data name="SessionClosed" xml:space="preserve"><value>Sessione chiusa</value></data>

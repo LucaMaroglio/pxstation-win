@@ -7,11 +7,11 @@ disegnato con Direct3D 11. Non servono remote-viewer né GTK.
 È la versione per Windows di [MacOS Spice Client](https://github.com/pawelwiecaszek/macos-spice-client)
 e di Linux Spice Client, di cui riprende interfaccia, logica Proxmox e icona.
 
-> **Stato:** in sviluppo, milestone **M2** completata: file `.vv`, server Proxmox (elenco
+> **Stato:** in sviluppo, milestone **M3** completata: file `.vv`, server Proxmox (elenco
 > delle VM, alimentazione, connessione via API), Gestione credenziali, finestre Benvenuto,
 > Macchine virtuali e Preferenze; connessione SPICE (TCP, TLS con la CA del file e
-> `host-subject`, proxy CONNECT di Proxmox, ticket) con canale main e istanza unica. Lo schermo
-> della VM arriva con M3.
+> `host-subject`, proxy CONNECT di Proxmox, ticket) con istanza unica; schermo della VM
+> (immagini QUIC, LZ, GLZ e LZ4) disegnato con Direct3D 11. Tastiera e mouse arrivano con M4.
 > Il piano è in [PIANO.md](PIANO.md).
 
 ## Requisiti
