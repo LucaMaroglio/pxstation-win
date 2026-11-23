@@ -29,7 +29,7 @@ import threading
 import time
 
 SPIKE = os.environ.get("WSC_SPIKE_DIR") or os.path.join(os.path.dirname(__file__), "..", "..", "windows-spike")
-PLAIN_PORT, TLS_PORT, PROXY_PORT, QMP_PORT, VIDEO_PORT = 15931, 15961, 13128, 14444, 15932
+PLAIN_PORT, TLS_PORT, PROXY_PORT, QMP_PORT, VIDEO_PORT, AUDIO_PORT = 15931, 15961, 13128, 14444, 15932, 15933
 
 
 def animation_floppy(path: str) -> str:
@@ -57,6 +57,22 @@ def animation_floppy(path: str) -> str:
         "4281FAC80072E3"              # 49: y < 200 → row
         "B48631C9BA409CCD15"          # 56: attesa
         "45EBD3")                     # 65: t++ → frame
+    return _floppy(path, code)
+
+
+def beep_floppy(path: str) -> str:
+    """Dischetto con un settore di avvio che accende l'altoparlante del PC a 440 Hz e resta in attesa::
+
+        mov al,0xb6; out 0x43,al          ; PIT canale 2, onda quadra
+        mov ax,2712; out 0x42,al          ; 1193182 / 440
+        mov al,ah;   out 0x42,al
+        in al,0x61;  or al,3; out 0x61,al ; collega il PIT all'altoparlante
+        halt: hlt; jmp halt
+    """
+    return _floppy(path, bytes.fromhex("B0B6E643B8980AE64288E0E642E4610C03E661F4EBFD"))
+
+
+def _floppy(path: str, code: bytes) -> str:
     sector = code + bytes(510 - len(code)) + b"\x55\xAA"
     with open(path, "wb") as handle:
         handle.write(sector + bytes(1474560 - len(sector)))
@@ -131,6 +147,10 @@ def main() -> int:
         spike_env.start_qemu("wsc-video", port=VIDEO_PORT, password=password,
                              extra=["-fda", animation_floppy(os.path.join(report, "anim.img")), "-boot", "a"],
                              spice_extra=["streaming-video=all"]),
+        # Audio (M7): l'altoparlante del PC suona un La e QEMU lo manda al canale playback SPICE.
+        spike_env.start_qemu("wsc-audio", port=AUDIO_PORT, password=password,
+                             extra=["-audiodev", "spice,id=snd0", "-machine", "pcspk-audiodev=snd0",
+                                    "-fda", beep_floppy(os.path.join(report, "beep.img")), "-boot", "a"]),
     ]
     proxy = spike_env.ConnectProxy(PROXY_PORT)
     qmp = QmpEvents(QMP_PORT)
@@ -144,6 +164,8 @@ def main() -> int:
             "title=Proxmox TLS"]),
         vv(os.path.join(report, "video.vv"),
            ["host=127.0.0.1", f"port={VIDEO_PORT}", f"password={password}", "title=video"]),
+        vv(os.path.join(report, "audio.vv"),
+           ["host=127.0.0.1", f"port={AUDIO_PORT}", f"password={password}", "title=audio"]),
         vv(os.path.join(report, "ticket-errato.vv"),
            ["host=127.0.0.1", f"port={PLAIN_PORT}", "password=sbagliato", "title=ticket errato"]),
     ]

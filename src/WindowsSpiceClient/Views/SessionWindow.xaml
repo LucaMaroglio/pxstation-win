@@ -33,6 +33,11 @@
                             <MenuFlyoutItem x:Name="ReleaseCursorItem" x:Uid="SessionReleaseCursor" Click="OnReleaseCursor">
                                 <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8B0;" /></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
+                            <MenuFlyoutSeparator />
+                            <!-- Microfono (M7): spento in ogni sessione finché l'utente non lo accende. -->
+                            <ToggleMenuFlyoutItem x:Name="MicrophoneItem" x:Uid="SessionMicrophone" IsEnabled="False" Click="OnToggleMicrophone">
+                                <ToggleMenuFlyoutItem.Icon><FontIcon Glyph="&#xE720;" /></ToggleMenuFlyoutItem.Icon>
+                            </ToggleMenuFlyoutItem>
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>

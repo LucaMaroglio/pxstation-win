@@ -75,6 +75,7 @@ public sealed partial class SessionWindow : Window
             _clipboard.Dispose();
             StopReconnecting();
             CancelTransfers();
+            StopAudio();
             if (_session is { } current) _ = current.DisposeAsync().AsTask();
             _session = null;
         };
@@ -149,8 +150,10 @@ public sealed partial class SessionWindow : Window
         {
             MediaDecoders = SpiceKit.Windows.Media.WindowsMediaDecoders.Shared,
             SendVideoCodecPreference = Environment.GetEnvironmentVariable("WSC_PREFER_VIDEO_CODECS") == "1",
+            Audio = SpiceKit.Windows.Audio.SessionAudio.Support,
         };
         _session = session;
+        StartAudio(session);
         _agent = false;
         _clipboard.SetAvailable(false);
         ShowState(SessionState.Connecting);
@@ -252,9 +255,11 @@ public sealed partial class SessionWindow : Window
         var client = _session?.MouseMode == MouseModes.Client;
         _cursor.SetMode(client, _pointer.IsLocked);
         var hotkey = KeyboardState.HotkeyOf(_profile, HotkeyAction.ReleaseCursor).ToString();
-        AppTitleBar.Subtitle = !_screenVisible ? "" :
+        var hint = !_screenVisible ? "" :
             _released ? Strings.Format("SessionReleasedHint", hotkey) :
             !client && !_pointer.IsLocked ? Strings.Format("SessionCaptureHint", hotkey) : "";
+        // Il microfono in uso si vede sempre: l'utente deve sapere quando la VM lo ascolta.
+        AppTitleBar.Subtitle = string.Join(" · ", new[] { MicrophoneSubtitle, hint }.Where(s => s.Length > 0));
     }
 
     // MARK: display e cursore
@@ -350,6 +355,7 @@ public sealed partial class SessionWindow : Window
                     ProfileInfo.Message = Strings.Format("SessionConnectedDetail", string.Join(", ", linked.Linked.Prepend(new ChannelEntry(1, 0))))
                                           + Details();
                     SessionMenuButton.IsEnabled = session.HasInputs;
+                    MicrophoneItem.IsEnabled = linked.Linked.Any(e => e.Type == ChannelType.Record);
                     break;
                 case SessionEvent.MouseModeChanged mode:
                     AppLog.Info($"Modalità del puntatore: {mode.Mode}");

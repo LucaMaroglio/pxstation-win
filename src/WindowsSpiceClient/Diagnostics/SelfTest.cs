@@ -146,6 +146,7 @@ internal static class SelfTest
             {
                 lines.Add(await ScreenResultAsync(window, directory, name));
                 if (name.Contains("video", StringComparison.Ordinal)) lines.Add(await VideoResultAsync(window, directory, name));
+                else if (name.Contains("audio", StringComparison.Ordinal)) lines.Add(await AudioResultAsync(window, name));
                 else lines.Add(await InputResultAsync(window, directory, name));
                 // Ticket monouso senza server Proxmox configurato: niente riconnessione, ma la spiegazione.
                 if (name == "in-chiaro") lines.Add(await ReconnectResultAsync(window, name, expectReconnect: false));
@@ -314,6 +315,18 @@ internal static class SelfTest
         var ok = window.Reconnections > 0 && window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected && window.ScreenUpdates > updates;
         return string.Create(CultureInfo.InvariantCulture,
             $"riconnessione {name}: {(ok ? "OK" : "ERRORE")} {window.Reconnections} riconnessioni, {window.ScreenUpdates - updates} aggiornamenti dopo · {window.StatusText.Replace('\n', ' ')}");
+    }
+
+    /// <summary>
+    /// Audio (M7): la VM di prova suona un La con l'altoparlante del PC; i pacchetti del canale
+    /// playback devono arrivare ed essere decodificati. L'uscita può mancare (VM senza scheda audio).
+    /// </summary>
+    private static async Task<string> AudioResultAsync(SessionWindow window, string name)
+    {
+        await WaitForAsync(() => window.AudioStatistics.Samples > 48_000, TimeSpan.FromSeconds(20));
+        var (packets, samples, output, _) = window.AudioStatistics;
+        return string.Create(CultureInfo.InvariantCulture,
+            $"audio {name}: {(samples > 48_000 ? "OK" : "ERRORE")} {packets} pacchetti, {samples} campioni decodificati, uscita: {output}");
     }
 
     private static async Task<byte[]> EncodePngAsync(byte[] bgra, int width, int height)

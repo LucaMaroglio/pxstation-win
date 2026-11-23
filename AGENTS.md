@@ -71,13 +71,18 @@ windows-spice-client/
 │   │   │                        DisplayChannel (superfici, contropressione), ImageResolver (cache) (M3);
 │   │   │                        InputsChannel (coda, limite dei movimenti), CursorChannel (cache) (M4);
 │   │   │                        DisplayChannel.Streams (flussi video, report), MultimediaClock (M5);
-│   │   │                        AgentOutbox (coda a gettoni verso l'agente), agente nel MainChannel (M6)
+│   │   │                        AgentOutbox (coda a gettoni verso l'agente), agente nel MainChannel (M6);
+│   │   │                        AudioChannels: PlaybackChannel, RecordChannel (M7)
+│   │   ├── Audio/               JitterBuffer (60/250 ms) (M7)
 │   │   ├── Agent/               AgentProtocol (messaggi, ricomposizione), ClipboardMessages, FileTransferMessages (M6)
 │   │   ├── Input/               KeyboardState: tasti Windows → scancode set 1, scorciatoie del .vv (M4)
 │   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2);
-│   │                            SpiceSession.Agent (risoluzione, appunti, SendFileAsync), ReconnectPolicy (M6)
+│   │                            SpiceSession.Agent (risoluzione, appunti, SendFileAsync), ReconnectPolicy (M6);
+│   │                            SpiceSession.Audio (AudioSupport, eventi audio, SendMicrophone) (M7)
 │   ├── SpiceKit.Windows/        net10.0-windows, niente WinUI: Media/ WicJpegDecoder (Windows.Graphics.Imaging),
-│   │                            MediaFoundationVideoDecoder (H.264/H.265 → NV12), TransformOutput, WindowsMediaDecoders (M5)
+│   │                            MediaFoundationVideoDecoder (H.264/H.265 → NV12), TransformOutput, WindowsMediaDecoders (M5);
+│   │                            Audio/ Wasapi (COM generato, niente pacchetti), WasapiRenderer, WasapiCapture,
+│   │                            OpusPacketDecoder (Concentus), SessionAudio (M7)
 │   └── WindowsSpiceClient/      app WinUI 3
 │       ├── Assets/              app.ico (multi-risoluzione), PNG
 │       ├── Display/             D3D11Presenter (texture della superficie, adattamento con la trasformazione
@@ -90,14 +95,15 @@ windows-spice-client/
 │       │                        FileAssociation, VmListLoader, Strings, JsonFiles, ClipboardBridge (M6)
 │       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
 │       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session (+ .Agent: risoluzione e
-│                                copia di file; + .Reconnect: riconnessione nella stessa finestra), Dialogs, WindowChrome
+│                                copia di file; + .Reconnect: riconnessione nella stessa finestra; + .Audio:
+│                                microfono), Dialogs, WindowChrome
 ├── tests/SpiceKit.Tests/        xunit v3 (net10.0-windows: prova anche SpiceKit.Windows); Fixtures/ copiate
 │                                da macos-spice-client; TestHttpsServer; H264TestEncoder (codificatore di Windows)
 └── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
 ```
 
 Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/UsbEmulation`, in
-`SpiceKit.Windows` WASAPI, WinSCard e UsbDk e, nell'app, in `Shell/` area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
+`SpiceKit.Windows` WinSCard e UsbDk e, nell'app, in `Shell/` area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
 righe di P/Invoke e servono solo all'interfaccia.
 
 Dati dell'app: `%APPDATA%\WindowsSpiceClient\` (`settings.json`, `servers.json`,
@@ -152,6 +158,12 @@ tools\build.ps1 -Spice         # + autoverifica SPICE contro QEMU per Windows (s
   sessione QEMU `in-chiaro` (ticket monouso) deve fermarsi spiegando perché. Le VM di prova non hanno
   un sistema ospite, quindi niente spice-vdagent: risoluzione, appunti e copia di file sono provati
   da `SessionAgentTests` (server e agente finti) e vanno verificati su una VM vera.
+- **Audio:** la VM `audio` accende l'altoparlante del PC a 440 Hz (settore di avvio generato da
+  `selftest_spice.py`, `-audiodev spice -machine pcspk-audiodev`); l'autoverifica richiede pacchetti
+  decodificati e un tono stimato di circa 440 Hz (QEMU manda Opus). La VM di sviluppo non ha
+  altoparlanti né microfono: l'uscita WASAPI risulta «nessun dispositivo» e il test del renderer viene
+  saltato; uscita e microfono vanno provati su un PC vero. Il canale record compare solo con un
+  dispositivo audio con ingresso nell'ospite: provato dai test unitari.
 - **Video:** il client annuncia solo i codec decodificabili su quel PC (H.264/H.265 se Windows ha il
   decoder Media Foundation, sempre MJPEG). `PREFERRED_VIDEO_CODEC_TYPE` **non** si invia per
   impostazione predefinita (come remote-viewer): QEMU 11.1 per Windows va in crash appena lo riceve,
@@ -206,6 +218,10 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
   controllate e ricodificate prima di finire negli appunti. Gli appunti di Windows si offrono solo
   con la finestra della sessione attiva e si danno solo se identici a quelli offerti; dall'ospite si
   accetta solo il tipo chiesto. I nomi dei file copiati nell'ospite non possono contenere separatori.
+- Audio (M7): START con 1–8 canali e 8–192 kHz, pacchetti ≤ 64 KiB, Opus ≤ 4000 byte; code limitate
+  (~2 s verso la riproduzione, ~0,5 s verso il server, buffer anti-jitter ≤ 1 s). Il **microfono è
+  spento in ogni sessione** finché l'utente non lo accende dal menu; si apre solo mentre l'ospite
+  registra e la barra del titolo lo segnala («Microfono in uso…»).
 
 ## 7. Convenzioni
 
@@ -226,4 +242,5 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | M4 – canali inputs e cursor, hook della tastiera, puntatore client/server, cursore dell'ospite, scorciatoie del `.vv`, Ctrl+Alt+Canc, schermo intero | ✅ 23/11/2026 (provato contro QEMU/SeaBIOS; modalità client e forme del cursore da verificare su una VM reale) |
 | M5 – JPEG e JPEG con alfa (WIC), flussi MJPEG/H.264/H.265 (Media Foundation, decodifica software), report dei flussi, ≤ 64 flussi | ✅ 23/11/2026 (MJPEG provato contro QEMU; H.264 con il codificatore di Windows; H.264 da spice-server e DXVA da verificare) |
 | M6 – agente (risoluzione dinamica, appunti testo/PNG, copia di file trascinandoli), riconnessione nella stessa finestra | ✅ 23/11/2026 (riconnessione provata col finto Proxmox; agente provato con server finto, da verificare su VM con spice-vdagent; più schermi: solo il primo) |
-| M7 … M9 | vedi PIANO.md §4 |
+| M7 – audio: riproduzione PCM e Opus (Concentus) con buffer anti-jitter, microfono PCM a richiesta, WASAPI | ✅ 24/11/2026 (flusso Opus provato contro QEMU con un tono a 440 Hz; uscita e microfono da verificare su un PC con scheda audio) |
+| M8 … M9 | vedi PIANO.md §4 |
