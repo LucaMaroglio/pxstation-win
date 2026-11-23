@@ -29,13 +29,15 @@ public abstract record SessionEvent
 /// <c>SPICE_MSG_MAIN_INIT</c> e collega con quello gli altri canali elencati da
 /// <c>CHANNELS_LIST</c>, tutti subito: i ticket Proxmox scadono in circa 30 secondi. Poi il
 /// ticket viene azzerato.</para>
-/// <para>Il canale display 0 alimenta <see cref="DisplayEvents"/> (M3); inputs e cursor vengono collegati e i loro
-/// messaggi scartati (il protocollo base, ACK e PING, resta attivo) fino a M4.</para>
+/// <para>Il canale display 0 alimenta <see cref="DisplayEvents"/> (M3), il canale cursor
+/// <see cref="CursorEvents"/>; <see cref="SendInput"/> passa tastiera e mouse al canale inputs (M4).</para>
 /// </remarks>
 public sealed class SpiceSession : IAsyncDisposable
 {
     private readonly Channel<SessionEvent> _events = Channel.CreateUnbounded<SessionEvent>(new UnboundedChannelOptions { SingleReader = true });
     private readonly Channel<DisplayEvent> _display = Channel.CreateUnbounded<DisplayEvent>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly Channel<CursorEvent> _cursor = Channel.CreateUnbounded<CursorEvent>(new UnboundedChannelOptions { SingleReader = true });
+    private InputsChannel? _inputs;
     private readonly ChannelOpener _opener;
     private readonly TransportException? _configurationError;
     private readonly SecretTicket? _ticket;
@@ -79,6 +81,36 @@ public sealed class SpiceSession : IAsyncDisposable
 
     /// <summary>Contropressione verso il renderer: <see cref="DisplayUpdateCredit.Consumed"/> dopo ogni aggiornamento applicato.</summary>
     public DisplayUpdateCredit DisplayCredit { get; } = new();
+
+    /// <summary>Forma, posizione e visibilità del cursore dell'ospite; si completa alla fine della sessione.</summary>
+    public ChannelReader<CursorEvent> CursorEvents => _cursor.Reader;
+
+    /// <summary>Il server ha un canale inputs collegato: tastiera e mouse arrivano all'ospite.</summary>
+    public bool HasInputs => Volatile.Read(ref _inputs) is not null;
+
+    /// <summary>Modalità del puntatore in uso (client = posizioni assolute, server = movimenti relativi).</summary>
+    public MouseModes MouseMode
+    {
+        get
+        {
+            lock (_lock) return _mouseMode;
+        }
+    }
+
+    private MouseModes _mouseMode = MouseModes.Server;
+
+    /// <summary>Inoltra un input all'ospite; non blocca, ignorato senza canale inputs o a sessione chiusa.</summary>
+    public void SendInput(InputEvent input)
+    {
+        if (State.Kind != SessionStateKind.Connected || Volatile.Read(ref _inputs) is not { } inputs) return;
+        inputs.Post(input);
+        Interlocked.Increment(ref _inputsSent);
+    }
+
+    /// <summary>Input accodati finora (diagnostica e autoverifica).</summary>
+    public int InputsSent => Volatile.Read(ref _inputsSent);
+
+    private int _inputsSent;
 
     public SessionState State
     {
@@ -153,6 +185,7 @@ public sealed class SpiceSession : IAsyncDisposable
             {
                 case MainEvent.Initialized init:
                     _sessionId = init.SessionId;
+                    lock (_lock) _mouseMode = init.CurrentMode;
                     Emit(new SessionEvent.MouseModeChanged(init.CurrentMode));
                     Emit(new SessionEvent.AgentChanged(init.HasAgent));
                     break;
@@ -160,6 +193,7 @@ public sealed class SpiceSession : IAsyncDisposable
                     await OpenChannelsAsync(channels.List).ConfigureAwait(false);
                     break;
                 case MainEvent.MouseMode mode:
+                    lock (_lock) _mouseMode = mode.Current;
                     Emit(new SessionEvent.MouseModeChanged(mode.Current));
                     break;
                 case MainEvent.AgentConnected agent:
@@ -201,15 +235,22 @@ public sealed class SpiceSession : IAsyncDisposable
             foreach (var connection in opened)
             {
                 var name = $"{connection.Type.Name()}:{connection.Id}";
-                if (connection.Type == ChannelType.Display)
+                switch (connection.Type)
                 {
-                    var display = new DisplayChannel(connection, _display.Writer, DisplayCredit);
-                    Spawn(name, critical: true, () => display.RunAsync(_stop.Token));
-                }
-                else
-                {
-                    // Inputs e cursor (M4): per ora si tiene vivo il canale e si scartano i messaggi.
-                    Spawn(name, critical: connection.Type != ChannelType.Cursor, () => DrainAsync(connection));
+                    case ChannelType.Display:
+                        var display = new DisplayChannel(connection, _display.Writer, DisplayCredit);
+                        Spawn(name, critical: true, () => display.RunAsync(_stop.Token));
+                        break;
+                    case ChannelType.Inputs:
+                        var inputs = new InputsChannel(connection);
+                        Volatile.Write(ref _inputs, inputs);
+                        Spawn(name, critical: true, () => inputs.RunAsync(_stop.Token));
+                        break;
+                    case ChannelType.Cursor:
+                        // Senza cursore la sessione resta usabile: il canale non è critico.
+                        var cursor = new CursorChannel(connection, _cursor.Writer);
+                        Spawn(name, critical: false, () => cursor.RunAsync(_stop.Token));
+                        break;
                 }
             }
         }
@@ -225,17 +266,12 @@ public sealed class SpiceSession : IAsyncDisposable
         SpiceLog.Info("session", "sessione connessa");
     }
 
-    private static CapabilitySet CapabilitiesOf(ChannelType type) =>
-        type == ChannelType.Display ? DisplayChannel.Capabilities : new CapabilitySet();
-
-    private async Task DrainAsync(ChannelConnection connection)
+    private static CapabilitySet CapabilitiesOf(ChannelType type) => type switch
     {
-        while (true)
-        {
-            var message = await connection.NextMessageAsync(_stop.Token).ConfigureAwait(false);
-            SpiceLog.Debug($"{connection.Type.Name()}:{connection.Id}", $"messaggio {message.Type} ({message.Payload.Length} byte) non ancora gestito");
-        }
-    }
+        ChannelType.Display => DisplayChannel.Capabilities,
+        ChannelType.Inputs => InputsChannel.Capabilities,
+        _ => CursorChannel.Capabilities,
+    };
 
     private void Spawn(string name, bool critical, Func<Task> body)
     {
@@ -284,6 +320,8 @@ public sealed class SpiceSession : IAsyncDisposable
         foreach (var channel in channels) await channel.DisposeAsync().ConfigureAwait(false);
         _events.Writer.TryComplete();
         _display.Writer.TryComplete();
+        _cursor.Writer.TryComplete();
+        Volatile.Write(ref _inputs, null);
     }
 
     private void SetState(SessionState state)

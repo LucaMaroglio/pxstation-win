@@ -127,6 +127,59 @@ public enum MouseModes : uint
     Client = 1 << 1,
 }
 
+/// <summary><c>SpiceMouseButton</c> (enums.h).</summary>
+public enum MouseButton : byte
+{
+    Invalid = 0,
+    Left,
+    Middle,
+    Right,
+    Up,
+    Down,
+    Side,
+    Extra,
+}
+
+/// <summary><c>SpiceMouseButtonMask</c> (enums.h).</summary>
+[Flags]
+public enum MouseButtons : ushort
+{
+    None = 0,
+    Left = 1 << 0,
+    Middle = 1 << 1,
+    Right = 1 << 2,
+    Up = 1 << 3,
+    Down = 1 << 4,
+    Side = 1 << 5,
+    Extra = 1 << 6,
+}
+
+/// <summary><c>SpiceKeyboardModifierFlags</c> (enums.h): stato dei blocchi della tastiera.</summary>
+[Flags]
+public enum KeyboardLocks : ushort
+{
+    None = 0,
+    ScrollLock = 1 << 0,
+    NumLock = 1 << 1,
+    CapsLock = 1 << 2,
+}
+
+public static class MouseButtonExtensions
+{
+    /// <summary>Bit della maschera corrispondente a un pulsante.</summary>
+    public static MouseButtons Mask(this MouseButton button) => button switch
+    {
+        MouseButton.Left => MouseButtons.Left,
+        MouseButton.Middle => MouseButtons.Middle,
+        MouseButton.Right => MouseButtons.Right,
+        MouseButton.Up => MouseButtons.Up,
+        MouseButton.Down => MouseButtons.Down,
+        MouseButton.Side => MouseButtons.Side,
+        MouseButton.Extra => MouseButtons.Extra,
+        _ => MouseButtons.None,
+    };
+}
+
 /// <summary><c>SpiceNotifySeverity</c> (enums.h).</summary>
 public enum NotifySeverity : uint
 {

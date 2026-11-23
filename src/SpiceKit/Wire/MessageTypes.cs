@@ -99,6 +99,40 @@ public enum DisplayClientMessage : ushort
     PreferredVideoCodecType,
 }
 
+/// <summary><c>SPICE_MSG_INPUTS_*</c>.</summary>
+public enum InputsServerMessage : ushort
+{
+    Init = 101,
+    KeyModifiers,
+    MouseMotionAck = 111,
+}
+
+/// <summary><c>SPICE_MSGC_INPUTS_*</c>.</summary>
+public enum InputsClientMessage : ushort
+{
+    KeyDown = 101,
+    KeyUp,
+    KeyModifiers,
+    KeyScancode,
+    MouseMotion = 111,
+    MousePosition,
+    MousePress,
+    MouseRelease,
+}
+
+/// <summary><c>SPICE_MSG_CURSOR_*</c>.</summary>
+public enum CursorServerMessage : ushort
+{
+    Init = 101,
+    Reset,
+    Set,
+    Move,
+    Hide,
+    Trail,
+    InvalOne,
+    InvalAll,
+}
+
 /// <summary><c>SPICE_MSGC_MAIN_*</c>.</summary>
 public enum MainClientMessage : ushort
 {
