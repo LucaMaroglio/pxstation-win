@@ -100,7 +100,7 @@ try {
         Invoke-Step "Autoverifica SPICE con QEMU ($exe)" { & $python (Join-Path $PSScriptRoot 'selftest_spice.py') $exe $report }
         Test-Report $report @('^direct3d: OK', '^spice in-chiaro: connessa', '^spice proxmox-tls: connessa',
             '^schermo in-chiaro: OK', '^schermo proxmox-tls: OK',
-            '^input in-chiaro: OK puntatore Server', '^input proxmox-tls: OK', '^video video: OK', '^audio audio: OK .*tono ~4[34][0-9] Hz', '^riconnessione in-chiaro: OK nessun tentativo',
+            '^input in-chiaro: OK puntatore Server', '^input proxmox-tls: OK', '^video video: OK', '^audio audio: OK .*tono ~4[34][0-9] Hz', '^iso usb: OK', '^smartcard usb: OK', '^riconnessione in-chiaro: OK nessun tentativo',
             '^spice ticket-errato: non riuscita \(ticket\)', '^spice senza server: non riuscita')
     }
 

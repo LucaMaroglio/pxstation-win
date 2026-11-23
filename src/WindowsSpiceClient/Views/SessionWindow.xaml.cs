@@ -161,6 +161,7 @@ public sealed partial class SessionWindow : Window
         _ = RunDisplayAsync(session);
         _ = RunCursorAsync(session);
         _ = RunClipboardAsync(session);
+        _ = RunDevicesAsync(session);
     }
 
     /// <summary>Esegue un comando della sessione come la sua scorciatoia (menu e autoverifica).</summary>
@@ -356,6 +357,7 @@ public sealed partial class SessionWindow : Window
                                           + Details();
                     SessionMenuButton.IsEnabled = session.HasInputs;
                     MicrophoneItem.IsEnabled = linked.Linked.Any(e => e.Type == ChannelType.Record);
+                    _ = RestoreDevicesAsync();
                     break;
                 case SessionEvent.MouseModeChanged mode:
                     AppLog.Info($"Modalità del puntatore: {mode.Mode}");

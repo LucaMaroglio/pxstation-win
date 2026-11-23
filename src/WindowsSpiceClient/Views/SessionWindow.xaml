@@ -23,7 +23,7 @@
                         Background="Transparent" BorderThickness="0">
                     <FontIcon Glyph="&#xE765;" FontSize="16" />
                     <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuFlyout x:Name="SessionMenu" Placement="BottomEdgeAlignedRight" Opening="OnSessionMenuOpening">
                             <MenuFlyoutItem x:Name="SecureAttentionItem" x:Uid="SessionSendCtrlAltDel" Click="OnSecureAttention">
                                 <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE72E;" /></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
@@ -38,6 +38,17 @@
                             <ToggleMenuFlyoutItem x:Name="MicrophoneItem" x:Uid="SessionMicrophone" IsEnabled="False" Click="OnToggleMicrophone">
                                 <ToggleMenuFlyoutItem.Icon><FontIcon Glyph="&#xE720;" /></ToggleMenuFlyoutItem.Icon>
                             </ToggleMenuFlyoutItem>
+                            <MenuFlyoutSeparator />
+                            <!-- Dispositivi (M8): ISO come CD-ROM USB, smartcard del PC. -->
+                            <MenuFlyoutItem x:Name="MountIsoItem" x:Uid="SessionMountIso" Click="OnMountIso">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE958;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem x:Name="EjectIsoItem" Visibility="Collapsed" Click="OnEjectIso">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xF847;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSubItem x:Name="SmartcardMenu" x:Uid="SessionSmartcardMenu">
+                                <MenuFlyoutSubItem.Icon><FontIcon Glyph="&#xE8C7;" /></MenuFlyoutSubItem.Icon>
+                            </MenuFlyoutSubItem>
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>

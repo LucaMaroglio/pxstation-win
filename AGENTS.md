@@ -60,7 +60,9 @@ windows-spice-client/
 │   │   ├── Wire/                ByteReader, ByteWriter, WireException (M0); link, messaggi base/main (M2);
 │   │   │                        Geometry, Images, DisplayMessages (M3); InputsMessages, CursorMessages (M4)
 │   │   ├── VVFile/              VVFileParser, ConnectionProfile, SecretTicket, Hotkey (M1)
-│   │   ├── UsbRedirWire/        UsbFilter (M1; il resto in M7)
+│   │   ├── UsbRedirWire/        UsbFilter (M1); UsbRedirProtocol (+ IUsbRedirDevice), UsbRedirCodec (M8)
+│   │   ├── UsbEmulation/        ScsiCdrom (+ IBlockSource, FileBlockSource), EmulatedCdrom (+ Bulk-Only),
+│   │   │                        EmulatedCcidReader (M8)
 │   │   ├── Proxmox/             ProxmoxClient (API + regole TLS), modelli, ProxmoxException (M1)
 │   │   ├── Transport/           TcpConnector (TCP, proxy CONNECT, TLS), TlsVerifier, ChannelLinker,
 │   │   │                        SpiceEndpoint, HostSubject/Pem, RsaTicketEncryptor (M2)
@@ -72,17 +74,20 @@ windows-spice-client/
 │   │   │                        InputsChannel (coda, limite dei movimenti), CursorChannel (cache) (M4);
 │   │   │                        DisplayChannel.Streams (flussi video, report), MultimediaClock (M5);
 │   │   │                        AgentOutbox (coda a gettoni verso l'agente), agente nel MainChannel (M6);
-│   │   │                        AudioChannels: PlaybackChannel, RecordChannel (M7)
+│   │   │                        AudioChannels: PlaybackChannel, RecordChannel (M7);
+│   │   │                        UsbRedirChannel (uno slot), SmartcardChannel (+ ISmartcard) (M8)
 │   │   ├── Audio/               JitterBuffer (60/250 ms) (M7)
 │   │   ├── Agent/               AgentProtocol (messaggi, ricomposizione), ClipboardMessages, FileTransferMessages (M6)
 │   │   ├── Input/               KeyboardState: tasti Windows → scancode set 1, scorciatoie del .vv (M4)
 │   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2);
 │   │                            SpiceSession.Agent (risoluzione, appunti, SendFileAsync), ReconnectPolicy (M6);
-│   │                            SpiceSession.Audio (AudioSupport, eventi audio, SendMicrophone) (M7)
+│   │                            SpiceSession.Audio (AudioSupport, eventi audio, SendMicrophone) (M7);
+│   │                            SpiceSession.Devices (slot USB, regole del .vv, smartcard) (M8)
 │   ├── SpiceKit.Windows/        net10.0-windows, niente WinUI: Media/ WicJpegDecoder (Windows.Graphics.Imaging),
 │   │                            MediaFoundationVideoDecoder (H.264/H.265 → NV12), TransformOutput, WindowsMediaDecoders (M5);
 │   │                            Audio/ Wasapi (COM generato, niente pacchetti), WasapiRenderer, WasapiCapture,
-│   │                            OpusPacketDecoder (Concentus), SessionAudio (M7)
+│   │                            OpusPacketDecoder (Concentus), SessionAudio (M7);
+│   │                            Smartcard/ WindowsSmartcard (WinSCard, sessione esclusiva) (M8)
 │   └── WindowsSpiceClient/      app WinUI 3
 │       ├── Assets/              app.ico (multi-risoluzione), PNG
 │       ├── Display/             D3D11Presenter (texture della superficie, adattamento con la trasformazione
@@ -96,14 +101,14 @@ windows-spice-client/
 │       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
 │       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session (+ .Agent: risoluzione e
 │                                copia di file; + .Reconnect: riconnessione nella stessa finestra; + .Audio:
-│                                microfono), Dialogs, WindowChrome
+│                                microfono; + .Devices: ISO e smartcard), Dialogs, WindowChrome
 ├── tests/SpiceKit.Tests/        xunit v3 (net10.0-windows: prova anche SpiceKit.Windows); Fixtures/ copiate
 │                                da macos-spice-client; TestHttpsServer; H264TestEncoder (codificatore di Windows)
 └── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
 ```
 
-Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/UsbEmulation`, in
-`SpiceKit.Windows` WinSCard e UsbDk e, nell'app, in `Shell/` area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
+Cartelle previste nelle prossime milestone (vedi PIANO.md §2): in `SpiceKit.Windows` UsbDk (USB
+reale, serve il driver) e, nell'app, in `Shell/` area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
 righe di P/Invoke e servono solo all'interfaccia.
 
 Dati dell'app: `%APPDATA%\WindowsSpiceClient\` (`settings.json`, `servers.json`,
@@ -164,6 +169,13 @@ tools\build.ps1 -Spice         # + autoverifica SPICE contro QEMU per Windows (s
   altoparlanti né microfono: l'uscita WASAPI risulta «nessun dispositivo» e il test del renderer viene
   saltato; uscita e microfono vanno provati su un PC vero. Il canale record compare solo con un
   dispositivo audio con ingresso nell'ospite: provato dai test unitari.
+- **USB e smartcard:** la VM `usb` ha uno slot `usb-redir` su xHCI, un lettore `usb-ccid` con
+  `ccid-card-passthru` sul canale smartcard e `-debugcon`; senza disco il BIOS si riavvia ogni 2 s.
+  L'autoverifica monta una ISO El Torito generata da `selftest_spice.py` (il settore di avvio scrive
+  «SPICE ISO OK» sullo schermo e sulla porta 0xE9): lo script la ritrova nella console di debug, cioè il
+  BIOS ha avviato la VM dal CD-ROM emulato dall'app. Poi una carta finta entra nel lettore del canale
+  smartcard. Il lettore CCID virtuale (per Proxmox) e WinSCard sono provati dai test unitari; le
+  smartcard vere vanno provate su un PC con un lettore.
 - **Video:** il client annuncia solo i codec decodificabili su quel PC (H.264/H.265 se Windows ha il
   decoder Media Foundation, sempre MJPEG). `PREFERRED_VIDEO_CODEC_TYPE` **non** si invia per
   impostazione predefinita (come remote-viewer): QEMU 11.1 per Windows va in crash appena lo riceve,
@@ -222,6 +234,13 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
   (~2 s verso la riproduzione, ~0,5 s verso il server, buffer anti-jitter ≤ 1 s). Il **microfono è
   spento in ogni sessione** finché l'utente non lo accende dal menu; si apre solo mentre l'ospite
   registra e la barra del titolo lo segnala («Microfono in uso…»).
+- USB e smartcard (M8, come macOS §7a–§7c): ≤ 16 slot usbredir, ≤ 4 MiB per trasferimento, ≤ 32 MiB e
+  ≤ 1024 trasferimenti in sospeso per slot, solo sugli endpoint del dispositivo, lunghezze IN controllate
+  prima di allocare; niente iso/bulk stream. `enable-usbredir`, `usb-filter` ed `enable-smartcard` valgono
+  in `SpiceSession.AttachUsbAsync` per ogni dispositivo, anche emulato (le ISO e il lettore CCID); un
+  `usb-filter` illeggibile spegne l'USB. Tastiere e mouse richiedono conferma. L'uscita del canale rilascia
+  dispositivo e carta. Lettore CCID: messaggi ≤ 271 byte, oltre 4 risposte non lette si stalla. Smartcard:
+  sessione WinSCard esclusiva, al rilascio la carta si resetta; messaggi VSC ≤ 128 KiB.
 
 ## 7. Convenzioni
 
@@ -243,4 +262,5 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | M5 – JPEG e JPEG con alfa (WIC), flussi MJPEG/H.264/H.265 (Media Foundation, decodifica software), report dei flussi, ≤ 64 flussi | ✅ 23/11/2026 (MJPEG provato contro QEMU; H.264 con il codificatore di Windows; H.264 da spice-server e DXVA da verificare) |
 | M6 – agente (risoluzione dinamica, appunti testo/PNG, copia di file trascinandoli), riconnessione nella stessa finestra | ✅ 23/11/2026 (riconnessione provata col finto Proxmox; agente provato con server finto, da verificare su VM con spice-vdagent; più schermi: solo il primo) |
 | M7 – audio: riproduzione PCM e Opus (Concentus) con buffer anti-jitter, microfono PCM a richiesta, WASAPI | ✅ 24/11/2026 (flusso Opus provato contro QEMU con un tono a 440 Hz; uscita e microfono da verificare su un PC con scheda audio) |
-| M8 … M9 | vedi PIANO.md §4 |
+| M8 – usbredir, ISO come CD-ROM USB, canale smartcard, lettore CCID virtuale, smartcard con WinSCard | ✅ 24/11/2026 (avvio da ISO provato contro QEMU; USB reale con UsbDk non fatto: serve il driver installato e un dispositivo da provare) |
+| M9 | vedi PIANO.md §4 |

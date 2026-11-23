@@ -187,5 +187,18 @@ Il token API di questo server verrà eliminato da Gestione credenziali di Window
   <data name="MicrophoneTitle" xml:space="preserve"><value>Microfono</value></data>
   <data name="MicrophoneInUse" xml:space="preserve"><value>Microfono in uso dalla macchina virtuale</value></data>
   <data name="MicrophoneDenied" xml:space="preserve"><value>Windows non permette a questa app di usare il microfono: attivalo in Impostazioni › Privacy e sicurezza › Microfono («Consenti alle app desktop di accedere al microfono»).</value></data>
+  <data name="SessionMountIso.Text" xml:space="preserve"><value>Monta un'immagine ISO…</value></data>
+  <data name="SessionEjectIso" xml:space="preserve"><value>Espelli {0}</value></data>
+  <data name="SessionSmartcardMenu.Text" xml:space="preserve"><value>Smartcard</value></data>
+  <data name="SmartcardNoReaders" xml:space="preserve"><value>Nessun lettore di smartcard</value></data>
+  <data name="SmartcardNoCard" xml:space="preserve"><value>{0} (senza carta)</value></data>
+  <data name="SmartcardRemove" xml:space="preserve"><value>Togli {0} dalla macchina virtuale</value></data>
+  <data name="DevicesTitle" xml:space="preserve"><value>Dispositivi</value></data>
+  <data name="IsoMounted" xml:space="preserve"><value>{0} è nel lettore CD virtuale della macchina virtuale.</value></data>
+  <data name="IsoEjected" xml:space="preserve"><value>{0} è stata espulsa.</value></data>
+  <data name="IsoFailed" xml:space="preserve"><value>Impossibile montare {0}: {1}</value></data>
+  <data name="SmartcardShared" xml:space="preserve"><value>La smartcard di {0} è condivisa con la macchina virtuale; finché resta lì, Windows non la usa.</value></data>
+  <data name="SmartcardRemoved" xml:space="preserve"><value>La smartcard è tornata a Windows.</value></data>
+  <data name="SmartcardFailed" xml:space="preserve"><value>Impossibile condividere la smartcard: {0}</value></data>
   <data name="SessionNoTicketHint" xml:space="preserve"><value>Con Proxmox premi di nuovo «Connetti» (o SPICE nell'interfaccia web) per ottenere un file nuovo.</value></data>
 </root>

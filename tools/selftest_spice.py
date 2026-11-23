@@ -29,7 +29,7 @@ import threading
 import time
 
 SPIKE = os.environ.get("WSC_SPIKE_DIR") or os.path.join(os.path.dirname(__file__), "..", "..", "windows-spike")
-PLAIN_PORT, TLS_PORT, PROXY_PORT, QMP_PORT, VIDEO_PORT, AUDIO_PORT = 15931, 15961, 13128, 14444, 15932, 15933
+PLAIN_PORT, TLS_PORT, PROXY_PORT, QMP_PORT, VIDEO_PORT, AUDIO_PORT, USB_PORT = 15931, 15961, 13128, 14444, 15932, 15933, 15934
 
 
 def animation_floppy(path: str) -> str:
@@ -70,6 +70,74 @@ def beep_floppy(path: str) -> str:
         halt: hlt; jmp halt
     """
     return _floppy(path, bytes.fromhex("B0B6E643B8980AE64288E0E642E4610C03E661F4EBFD"))
+
+
+def boot_iso(path: str) -> str:
+    """ISO 9660 minima con avvio El Torito "senza emulazione" (per il CD-ROM USB emulato, M8).
+
+    Il settore di avvio scrive "SPICE ISO OK" sullo schermo (int 10h) e sulla console di debug di
+    QEMU (porta 0xE9), poi si ferma. Indipendente dal segmento di caricamento::
+
+        push cs; pop ds; call here; here: pop si; add si, msg-here
+        next: lodsb; or al,al; jz done; out 0xe9,al; mov ah,0x0e; mov bx,7; int 0x10; jmp next
+        done: hlt; jmp done
+        msg: db "SPICE ISO OK", 13, 10, 0
+    """
+    sector = 2048
+    code = bytes.fromhex("0E1FE800005E83C617AC08C0740BE6E9B40EBB0700CD10EBF0F4EBFD") + b"SPICE ISO OK\r\n\x00"
+    image = bytearray(sector * 24)
+
+    def both16(value: int) -> bytes:
+        return value.to_bytes(2, "little") + value.to_bytes(2, "big")
+
+    def both32(value: int) -> bytes:
+        return value.to_bytes(4, "little") + value.to_bytes(4, "big")
+
+    def directory_record(extent: int, name: bytes) -> bytes:
+        record = bytes([0, 0]) + both32(extent) + both32(sector) + bytes(7) + bytes([2, 0, 0]) + both16(1) + bytes([len(name)]) + name
+        record = record + bytes(len(record) % 2)
+        return bytes([len(record)]) + record[1:]
+
+    # Descrittore del volume primario (settore 16), root nel settore 21.
+    pvd = bytearray(sector)
+    pvd[0:8] = b"\x01CD001\x01\x00"
+    pvd[40:72] = b"SPICETEST".ljust(32)
+    pvd[80:88] = both32(len(image) // sector)
+    pvd[120:124] = both16(1)
+    pvd[124:128] = both16(1)
+    pvd[128:132] = both16(sector)
+    root = directory_record(21, b"\x00")
+    pvd[156:156 + len(root)] = root
+    pvd[881] = 1
+    image[16 * sector:17 * sector] = pvd
+    # Boot record El Torito (settore 17): catalogo nel settore 19.
+    boot = bytearray(sector)
+    boot[0:7] = b"\x00CD001\x01"
+    boot[7:39] = b"EL TORITO SPECIFICATION".ljust(32, b"\x00")
+    boot[0x47:0x4B] = (19).to_bytes(4, "little")
+    image[17 * sector:18 * sector] = boot
+    # Terminatore dei descrittori (settore 18).
+    image[18 * sector:18 * sector + 7] = b"\xFFCD001\x01"
+    # Catalogo di avvio (settore 19): voce di convalida + voce iniziale (senza emulazione, 4 settori virtuali dal 20).
+    validation = bytearray(32)
+    validation[0] = 1
+    validation[4:28] = b"SPICE".ljust(24, b"\x00")
+    validation[30:32] = b"\x55\xAA"
+    checksum = (-sum(int.from_bytes(validation[i:i + 2], "little") for i in range(0, 32, 2))) & 0xFFFF
+    validation[28:30] = checksum.to_bytes(2, "little")
+    initial = bytearray(32)
+    initial[0] = 0x88
+    initial[6:8] = (4).to_bytes(2, "little")
+    initial[8:12] = (20).to_bytes(4, "little")
+    image[19 * sector:19 * sector + 64] = validation + initial
+    image[20 * sector:20 * sector + len(code)] = code
+    image[20 * sector + 510:20 * sector + 512] = b"\x55\xAA"
+    # Directory radice (settore 21): "." e "..".
+    entries = directory_record(21, b"\x00") + directory_record(21, b"\x01")
+    image[21 * sector:21 * sector + len(entries)] = entries
+    with open(path, "wb") as handle:
+        handle.write(image)
+    return path
 
 
 def _floppy(path: str, code: bytes) -> str:
@@ -138,6 +206,8 @@ def main() -> int:
     with open(pki["ca-cert.pem"], encoding="ascii") as handle:
         ca = handle.read().strip().replace("\n", "\\n")
 
+    debugcon = os.path.join(report, "debugcon.txt")
+    iso = boot_iso(os.path.join(report, "avvio.iso"))
     processes = [
         spike_env.start_qemu("wsc-plain", port=PLAIN_PORT, password=password,
                              extra=["-qmp", f"tcp:127.0.0.1:{QMP_PORT},server=on,wait=off"]),
@@ -151,6 +221,14 @@ def main() -> int:
         spike_env.start_qemu("wsc-audio", port=AUDIO_PORT, password=password,
                              extra=["-audiodev", "spice,id=snd0", "-machine", "pcspk-audiodev=snd0",
                                     "-fda", beep_floppy(os.path.join(report, "beep.img")), "-boot", "a"]),
+        # USB e smartcard (M8): slot usb-redir su xHCI, lettore usb-ccid con ccid-card-passthru sul canale
+        # smartcard; senza disco il BIOS si riavvia ogni 2 s finché non trova il CD-ROM USB dell'app.
+        spike_env.start_qemu("wsc-usb", port=USB_PORT, password=password,
+                             extra=["-device", "qemu-xhci,id=xhci",
+                                    "-chardev", "spicevmc,id=ur0,name=usbredir", "-device", "usb-redir,chardev=ur0,bus=xhci.0",
+                                    "-device", "usb-ccid,bus=xhci.0", "-chardev", "spicevmc,id=ccid,name=smartcard",
+                                    "-device", "ccid-card-passthru,chardev=ccid",
+                                    "-debugcon", f"file:{debugcon}", "-boot", "reboot-timeout=2000"]),
     ]
     proxy = spike_env.ConnectProxy(PROXY_PORT)
     qmp = QmpEvents(QMP_PORT)
@@ -166,6 +244,8 @@ def main() -> int:
            ["host=127.0.0.1", f"port={VIDEO_PORT}", f"password={password}", "title=video"]),
         vv(os.path.join(report, "audio.vv"),
            ["host=127.0.0.1", f"port={AUDIO_PORT}", f"password={password}", "title=audio"]),
+        vv(os.path.join(report, "usb.vv"),
+           ["host=127.0.0.1", f"port={USB_PORT}", f"password={password}", "title=usb"]),
         vv(os.path.join(report, "ticket-errato.vv"),
            ["host=127.0.0.1", f"port={PLAIN_PORT}", "password=sbagliato", "title=ticket errato"]),
     ]
@@ -174,12 +254,19 @@ def main() -> int:
         env = dict(os.environ)
         env["WSC_DATA_DIR"] = os.path.join(report, "data")
         env["WSC_SELFTEST_VV"] = ";".join(files)
+        env["WSC_SELFTEST_ISO"] = iso
         code = subprocess.run([exe, "--self-test", report], env=env, timeout=240).returncode
         print("richieste al proxy:", proxy.requests)
         if not any(r.startswith("CONNECT pvespiceproxy:") and r.endswith(f":{TLS_PORT} HTTP/1.1") for r in proxy.requests):
             print("ERRORE: il proxy non ha ricevuto il CONNECT atteso", file=sys.stderr)
             return 3
         print("eventi QMP della VM in chiaro:", qmp.events)
+        with open(debugcon, encoding="latin-1") as handle:
+            console = handle.read()
+        print("console di debug della VM usb:", repr(console[-80:]))
+        if "SPICE ISO OK" not in console:
+            print("ERRORE: la VM usb non si è avviata dalla ISO montata dall'app", file=sys.stderr)
+            return 5
         if "RESET" not in qmp.events:
             print("ERRORE: Ctrl+Alt+Canc non ha riavviato la VM in chiaro", file=sys.stderr)
             return 4

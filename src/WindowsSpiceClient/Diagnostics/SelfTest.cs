@@ -147,6 +147,7 @@ internal static class SelfTest
                 lines.Add(await ScreenResultAsync(window, directory, name));
                 if (name.Contains("video", StringComparison.Ordinal)) lines.Add(await VideoResultAsync(window, directory, name));
                 else if (name.Contains("audio", StringComparison.Ordinal)) lines.Add(await AudioResultAsync(window, name));
+                else if (name == "usb") lines.AddRange(await DevicesResultAsync(window, directory, name));
                 else lines.Add(await InputResultAsync(window, directory, name));
                 // Ticket monouso senza server Proxmox configurato: niente riconnessione, ma la spiegazione.
                 if (name == "in-chiaro") lines.Add(await ReconnectResultAsync(window, name, expectReconnect: false));
@@ -327,6 +328,47 @@ internal static class SelfTest
         var (packets, samples, output, _) = window.AudioStatistics;
         return string.Create(CultureInfo.InvariantCulture,
             $"audio {name}: {(samples > 48_000 ? "OK" : "ERRORE")} {packets} pacchetti, {samples} campioni decodificati, uscita: {output}");
+    }
+
+    /// <summary>
+    /// Dispositivi (M8): la ISO di prova (<c>WSC_SELFTEST_ISO</c>) si monta come CD-ROM USB e il BIOS
+    /// della VM, al riavvio successivo, ne esegue il settore di avvio (che scrive «SPICE ISO OK»:
+    /// <c>selftest_spice.py</c> lo legge dalla console di debug di QEMU); poi una carta finta entra
+    /// nel lettore del canale smartcard.
+    /// </summary>
+    private static async Task<string[]> DevicesResultAsync(SessionWindow window, string directory, string name)
+    {
+        await WaitForAsync(() => window.DeviceSupport.UsbSlots > 0, TimeSpan.FromSeconds(5));
+        var (slots, smartcardChannel) = window.DeviceSupport;
+        var iso = Environment.GetEnvironmentVariable("WSC_SELFTEST_ISO");
+        var mounted = iso is not null && await window.MountIsoAsync(iso);
+        var updates = window.ScreenUpdates;
+        // Il BIOS si riavvia ogni 2 s senza disco: al giro dopo trova il CD-ROM USB e ne esegue l'avvio.
+        await Task.Delay(TimeSpan.FromSeconds(12));
+        var file = $"screen-{name}-iso.png";
+        if (window.CaptureScreen() is { } capture)
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, file), await EncodePngAsync(capture.Bgra, capture.Width, capture.Height));
+        }
+        var shared = smartcardChannel && await window.ShareSmartcardAsync(new SelfTestCard());
+        return
+        [
+            string.Create(CultureInfo.InvariantCulture,
+                $"iso {name}: {(mounted ? "OK" : "ERRORE")} {slots} slot USB, montata, {window.ScreenUpdates - updates} aggiornamenti dopo -> {file}"),
+            $"smartcard {name}: {(shared ? "OK lettore accettato dalla VM e carta inserita" : "ERRORE")} (canale smartcard: {(smartcardChannel ? "sì" : "no")})",
+        ];
+    }
+
+    /// <summary>Carta finta per l'autoverifica: ATR di una carta T=1, risponde 90 00.</summary>
+    private sealed class SelfTestCard : ISmartcard
+    {
+        public string DisplayName => "Carta di prova";
+
+        public Task<byte[]> ConnectAsync() => Task.FromResult<byte[]>([0x3B, 0x80, 0x80, 0x01, 0x01]);
+
+        public Task<byte[]> TransmitAsync(byte[] apdu) => Task.FromResult<byte[]>([0x90, 0x00]);
+
+        public Task DisconnectAsync() => Task.CompletedTask;
     }
 
     private static async Task<byte[]> EncodePngAsync(byte[] bgra, int width, int height)

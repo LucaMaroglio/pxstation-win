@@ -64,6 +64,7 @@ public sealed partial class SessionWindow
     {
         SessionMenuButton.IsEnabled = false;
         _pointer.Release();
+        RememberDevicesForReconnect();
         var failure = state.Failure;
         var wasConnected = _connectedAt is not null;
         if (_connectedAt is { } since && Stopwatch.GetElapsedTime(since) >= _policy.StableAfter) _attempt = 0;
@@ -99,6 +100,8 @@ public sealed partial class SessionWindow
     {
         StopReconnecting();
         _attempt = 0;
+        _restoreIso = null; // nessuna riconnessione: niente da ricollegare
+        _restoreCard = null;
         ShowState(state);
         if (note is not null) ProfileInfo.Message = string.IsNullOrEmpty(ProfileInfo.Message) ? note : $"{ProfileInfo.Message}\n{note}";
     }
