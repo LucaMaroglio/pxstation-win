@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using SpiceKit.Channels;
 using SpiceKit.Codecs;
 using SpiceKit.Tests.Support;
+using SpiceKit.Transport;
 using SpiceKit.Wire;
 
 namespace SpiceKit.Tests.Channels;
@@ -114,6 +115,39 @@ public class DisplayStreamTests
 
         var preferred = DisplayClientEncoder.PreferredVideoCodecs([VideoCodecType.H264, VideoCodecType.Mjpeg]);
         Assert.Equal([2, (byte)VideoCodecType.H264, (byte)VideoCodecType.Mjpeg], preferred.Payload);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task The_codec_preference_is_sent_only_when_enabled(bool enabled)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (client, server) = MemoryTransport.Pair();
+        var caps = CapabilitySet.FromBits((int)DisplayCapability.PrefVideoCodecType);
+        var display = new DisplayChannel(new ChannelConnection(ChannelType.Display, 0, client, caps),
+            Channel.CreateUnbounded<DisplayEvent>().Writer, null, new FakeDecoders(VideoCodecType.H264, VideoCodecType.Mjpeg))
+        {
+            SendVideoCodecPreference = enabled,
+        };
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var run = display.RunAsync(stop.Token);
+        var types = new List<ushort>();
+        // INIT, poi (se abilitata) la preferenza; un PING del server fa da segnaposto: il PONG arriva dopo.
+        await server.SendAsync(new SpiceMessage((ushort)BaseServerMessage.Ping, new byte[12]).Encode(), ct);
+        while (types.Count == 0 || types[^1] != (ushort)BaseClientMessage.Pong)
+        {
+            var header = MiniHeader.Decode(await server.ReceiveAsync(MiniHeader.WireSize, ct));
+            var payload = await server.ReceiveAsync((int)header.Size, ct);
+            types.Add(header.Type);
+            if (header.Type == (ushort)DisplayClientMessage.PreferredVideoCodecType)
+            {
+                Assert.Equal([2, (byte)VideoCodecType.H264, (byte)VideoCodecType.Mjpeg], payload);
+            }
+        }
+        Assert.Equal(enabled, types.Contains((ushort)DisplayClientMessage.PreferredVideoCodecType));
+        await stop.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
     }
 
     [Fact]

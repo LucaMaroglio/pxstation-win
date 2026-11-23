@@ -41,7 +41,9 @@ cartelle condivise WebDAV.
 
 **Dipendenze approvate:** Microsoft.WindowsAppSDK, Microsoft.Windows.SDK.BuildTools,
 Vortice.* (Direct3D11, DXGI, WIC, MediaFoundation), H.NotifyIcon.WinUI, Concentus,
-CommunityToolkit.Mvvm, xunit.v3. **Chiedere prima di aggiungerne altre.**
+CommunityToolkit.Mvvm, xunit.v3. **Chiedere prima di aggiungerne altre.** (Il pacchetto
+`Vortice.WIC` non esiste nella 3.x, perché WIC è dentro `Vortice.Direct2D1`: per il JPEG si usa
+`Windows.Graphics.Imaging`, che fa parte di Windows.)
 
 ---
 
@@ -63,12 +65,16 @@ windows-spice-client/
 │   │   ├── Transport/           TcpConnector (TCP, proxy CONNECT, TLS), TlsVerifier, ChannelLinker,
 │   │   │                        SpiceEndpoint, HostSubject/Pem, RsaTicketEncryptor (M2)
 │   │   ├── Codecs/              PixelBuffer + Canvas (operazioni raster), BitmapDecoder, LzDecoder,
-│   │   │                        QuicDecoder/QuicModel, GlzDecoder, Lz4Decoder (M3); CursorDecoder (M4)
+│   │   │                        QuicDecoder/QuicModel, GlzDecoder, Lz4Decoder (M3); CursorDecoder (M4);
+│   │   │                        IMediaDecoders/IJpegDecoder/IVideoDecoder, JpegAlphaDecoder, AnnexB, Nv12Converter (M5)
 │   │   ├── Channels/            ChannelConnection (protocollo base), ChannelOpener, MainChannel, SpiceLog (M2);
 │   │   │                        DisplayChannel (superfici, contropressione), ImageResolver (cache) (M3);
-│   │   │                        InputsChannel (coda, limite dei movimenti), CursorChannel (cache) (M4)
+│   │   │                        InputsChannel (coda, limite dei movimenti), CursorChannel (cache) (M4);
+│   │   │                        DisplayChannel.Streams (flussi video, report), MultimediaClock (M5)
 │   │   ├── Input/               KeyboardState: tasti Windows → scancode set 1, scorciatoie del .vv (M4)
 │   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2)
+│   ├── SpiceKit.Windows/        net10.0-windows, niente WinUI: Media/ WicJpegDecoder (Windows.Graphics.Imaging),
+│   │                            MediaFoundationVideoDecoder (H.264/H.265 → NV12), TransformOutput, WindowsMediaDecoders (M5)
 │   └── WindowsSpiceClient/      app WinUI 3
 │       ├── Assets/              app.ico (multi-risoluzione), PNG
 │       ├── Display/             D3D11Presenter (texture della superficie, adattamento con la trasformazione
@@ -81,13 +87,13 @@ windows-spice-client/
 │       │                        FileAssociation, VmListLoader, Strings, JsonFiles
 │       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
 │       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session, Dialogs, WindowChrome
-├── tests/SpiceKit.Tests/        xunit v3; Fixtures/ copiate da macos-spice-client; TestHttpsServer
+├── tests/SpiceKit.Tests/        xunit v3 (net10.0-windows: prova anche SpiceKit.Windows); Fixtures/ copiate
+│                                da macos-spice-client; TestHttpsServer; H264TestEncoder (codificatore di Windows)
 └── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
 ```
 
 Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Agent,
-UsbEmulation}`, il progetto `SpiceKit.Windows` (WASAPI, WinSCard, UsbDk,
-Media Foundation; da creare quando serve la prima di queste parti) e, nell'app, in `Shell/`
+UsbEmulation}`, in `SpiceKit.Windows` WASAPI, WinSCard e UsbDk e, nell'app, in `Shell/`
 area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
 righe di P/Invoke e servono solo all'interfaccia.
 
@@ -134,6 +140,15 @@ tools\build.ps1 -Spice         # + autoverifica SPICE contro QEMU per Windows (s
   controlla l'evento QMP `RESET` della VM in chiaro e lo schermo dopo il riavvio finisce in
   `screen-<nome>-dopo-input.png`. Le VM di prova restano in modalità server del puntatore (la
   modalità client richiede l'agente o un sistema ospite che attivi la tavoletta).
+  La VM `video` avvia da un dischetto un'animazione VGA (settore di avvio generato da
+  `selftest_spice.py`) con `streaming-video=all`: il server crea flussi MJPEG (20 strisce verticali da
+  32 pixel, ognuna un flusso: piccoli salti fra le strisce sono normali) e l'autoverifica richiede
+  fotogrammi decodificati (`screen-video-flusso.png`).
+- **Video:** il client annuncia solo i codec decodificabili su quel PC (H.264/H.265 se Windows ha il
+  decoder Media Foundation, sempre MJPEG). `PREFERRED_VIDEO_CODEC_TYPE` **non** si invia per
+  impostazione predefinita (come remote-viewer): QEMU 11.1 per Windows va in crash appena lo riceve,
+  e con lui la VM. Diagnostica: `WSC_VIDEO_CODECS=mjpeg,h264` (o `none`) limita i codec annunciati,
+  `WSC_PREFER_VIDEO_CODECS=1` invia la preferenza (da provare su Proxmox reale prima di renderla predefinita).
   **Guardare i PNG** dopo ogni modifica all'interfaccia.
   **Usarla al posto delle catture dello schermo:** nella VM di sviluppo (senza GPU, sessione
   remota) `CopyFromScreen` e `PrintWindow` restituiscono fotogrammi vecchi e le finestre a
@@ -196,4 +211,5 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | M2 – trasporto (TCP, TLS, proxy CONNECT), link e autenticazione, canale main; istanza unica | ✅ 23/11/2026 |
 | M3 – display: superfici, comandi di disegno, decoder LZ, QUIC, GLZ e LZ4, presentazione D3D11 | ✅ 23/11/2026 |
 | M4 – canali inputs e cursor, hook della tastiera, puntatore client/server, cursore dell'ospite, scorciatoie del `.vv`, Ctrl+Alt+Canc, schermo intero | ✅ 23/11/2026 (provato contro QEMU/SeaBIOS; modalità client e forme del cursore da verificare su una VM reale) |
-| M5 … M9 | vedi PIANO.md §4 |
+| M5 – JPEG e JPEG con alfa (WIC), flussi MJPEG/H.264/H.265 (Media Foundation, decodifica software), report dei flussi, ≤ 64 flussi | ✅ 23/11/2026 (MJPEG provato contro QEMU; H.264 con il codificatore di Windows; H.264 da spice-server e DXVA da verificare) |
+| M6 … M9 | vedi PIANO.md §4 |

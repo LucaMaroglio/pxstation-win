@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Parti di SpiceKit che dipendono da Windows (AGENTS.md §3): JPEG con Windows.Graphics.Imaging
+       (WIC), video con Media Foundation; poi WASAPI, WinSCard e UsbDk. Nessuna dipendenza da WinUI. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>SpiceKit.Windows</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SpiceKit\SpiceKit.csproj" />
+    <InternalsVisibleTo Include="SpiceKit.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Vortice.MediaFoundation" Version="3.8.3" />
+  </ItemGroup>
+</Project>

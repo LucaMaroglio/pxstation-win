@@ -144,7 +144,8 @@ internal static class SelfTest
             if (window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected)
             {
                 lines.Add(await ScreenResultAsync(window, directory, name));
-                lines.Add(await InputResultAsync(window, directory, name));
+                if (name.Contains("video", StringComparison.Ordinal)) lines.Add(await VideoResultAsync(window, directory, name));
+                else lines.Add(await InputResultAsync(window, directory, name));
             }
             await SettleAsync(window.RootElement, 300);
             lines.Add(await CaptureAsync(window.RootElement, directory, $"session-{name}.png"));
@@ -269,6 +270,24 @@ internal static class SelfTest
         var ok = connected && window.InputsSent >= 9 && redrawn > 0;
         return string.Create(CultureInfo.InvariantCulture,
             $"input {name}: {(ok ? "OK" : "ERRORE")} puntatore {mode}, {window.InputsSent} input inviati, {redrawn} aggiornamenti dopo Ctrl+Alt+Canc, {(connected ? "sessione collegata" : "sessione chiusa")} -> {file}");
+    }
+
+    /// <summary>
+    /// Flusso video (M5): la VM di prova anima un gradiente e il server lo invia come flusso
+    /// (MJPEG o H.264); i fotogrammi devono essere decodificati e disegnati sullo schermo.
+    /// </summary>
+    private static async Task<string> VideoResultAsync(SessionWindow window, string directory, string name)
+    {
+        var codecs = string.Join(", ", SpiceKit.Windows.Media.WindowsMediaDecoders.Shared.VideoCodecs);
+        await WaitForAsync(() => window.VideoFrames.Decoded >= 25, TimeSpan.FromSeconds(30));
+        var (decoded, dropped) = window.VideoFrames;
+        var file = $"screen-{name}-flusso.png";
+        if (window.CaptureScreen() is { } capture)
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, file), await EncodePngAsync(capture.Bgra, capture.Width, capture.Height));
+        }
+        return string.Create(CultureInfo.InvariantCulture,
+            $"video {name}: {(decoded >= 25 ? "OK" : "ERRORE")} {decoded} fotogrammi decodificati, {dropped} scartati (codec annunciati: {codecs}) -> {file}");
     }
 
     private static async Task<byte[]> EncodePngAsync(byte[] bgra, int width, int height)

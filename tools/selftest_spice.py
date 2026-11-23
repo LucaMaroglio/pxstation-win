@@ -29,7 +29,38 @@ import threading
 import time
 
 SPIKE = os.environ.get("WSC_SPIKE_DIR") or os.path.join(os.path.dirname(__file__), "..", "..", "windows-spike")
-PLAIN_PORT, TLS_PORT, PROXY_PORT, QMP_PORT = 15931, 15961, 13128, 14444
+PLAIN_PORT, TLS_PORT, PROXY_PORT, QMP_PORT, VIDEO_PORT = 15931, 15961, 13128, 14444, 15932
+
+
+def animation_floppy(path: str) -> str:
+    """Dischetto con un settore di avvio che anima un gradiente a 320x200 (VGA 13h), 25 fps, senza fine.
+
+    Stesso schema di ``macos-spice-client/.../Fixtures/display/anim.asm``, assemblato a mano::
+
+        cli; xor ax,ax; mov ds,ax; mov ss,ax; mov sp,0x7c00; sti
+        mov ax,0x13; int 0x10; mov ax,0xa000; mov es,ax; xor bp,bp
+        frame: xor di,di; xor dx,dx
+        row:   xor cx,cx
+        col:   mov ax,cx; add ax,dx; add ax,bp; shr ax,1; and al,0x3f; add al,0x40; stosb
+               inc cx; cmp cx,320; jb col
+               inc dx; cmp dx,200; jb row
+               mov ah,0x86; xor cx,cx; mov dx,40000; int 0x15   ; attesa di 40 ms
+               inc bp; jmp frame
+    """
+    code = bytes.fromhex(
+        "FA31C08ED88ED0BC007CFB"      # 0: preparazione dei segmenti e della pila
+        "B81300CD10B800A08EC031ED"    # 11: modo 13h, ES = A000, contatore dei fotogrammi
+        "31FF31D2"                    # 23 frame
+        "31C9"                        # 27 row
+        "89C801D001E8D1E8243F0440AA"  # 29 col: colore = ((x + y + t) >> 1) & 63 + 64
+        "4181F9400172EC"              # 42: x < 320 → col
+        "4281FAC80072E3"              # 49: y < 200 → row
+        "B48631C9BA409CCD15"          # 56: attesa
+        "45EBD3")                     # 65: t++ → frame
+    sector = code + bytes(510 - len(code)) + b"\x55\xAA"
+    with open(path, "wb") as handle:
+        handle.write(sector + bytes(1474560 - len(sector)))
+    return path
 
 
 class QmpEvents:
@@ -96,6 +127,10 @@ def main() -> int:
                              extra=["-qmp", f"tcp:127.0.0.1:{QMP_PORT},server=on,wait=off"]),
         spike_env.start_qemu("wsc-proxmox", tls_port=TLS_PORT, x509_dir=os.path.dirname(pki["ca-cert.pem"]),
                              password=password),
+        # Video (M5): l'animazione con streaming-video=all fa nascere un flusso (MJPEG o H.264).
+        spike_env.start_qemu("wsc-video", port=VIDEO_PORT, password=password,
+                             extra=["-fda", animation_floppy(os.path.join(report, "anim.img")), "-boot", "a"],
+                             spice_extra=["streaming-video=all"]),
     ]
     proxy = spike_env.ConnectProxy(PROXY_PORT)
     qmp = QmpEvents(QMP_PORT)
@@ -107,6 +142,8 @@ def main() -> int:
             f"proxy=http://127.0.0.1:{PROXY_PORT}", f"password={password}", f"ca={ca}",
             f"host-subject={spike_env.SERVER_SUBJECT}", "secure-channels=main;display;inputs;cursor",
             "title=Proxmox TLS"]),
+        vv(os.path.join(report, "video.vv"),
+           ["host=127.0.0.1", f"port={VIDEO_PORT}", f"password={password}", "title=video"]),
         vv(os.path.join(report, "ticket-errato.vv"),
            ["host=127.0.0.1", f"port={PLAIN_PORT}", "password=sbagliato", "title=ticket errato"]),
     ]

@@ -86,6 +86,9 @@ public sealed class SpiceSession : IAsyncDisposable
     /// <summary>JPEG e video della piattaforma (SpiceKit.Windows); da impostare prima di <see cref="ConnectAsync"/>.</summary>
     public IMediaDecoders? MediaDecoders { get; init; }
 
+    /// <summary>Chiede al server i codec video preferiti (vedi <see cref="DisplayChannel.SendVideoCodecPreference"/>).</summary>
+    public bool SendVideoCodecPreference { get; init; }
+
     /// <summary>Fotogrammi video applicati e scartati finora (diagnostica e autoverifica).</summary>
     public (int Decoded, int Dropped) VideoFrames => Volatile.Read(ref _displayChannel)?.VideoFrames ?? (0, 0);
 
@@ -248,7 +251,10 @@ public sealed class SpiceSession : IAsyncDisposable
                 switch (connection.Type)
                 {
                     case ChannelType.Display:
-                        var display = new DisplayChannel(connection, _display.Writer, DisplayCredit, MediaDecoders, _clock);
+                        var display = new DisplayChannel(connection, _display.Writer, DisplayCredit, MediaDecoders, _clock)
+                        {
+                            SendVideoCodecPreference = SendVideoCodecPreference,
+                        };
                         Volatile.Write(ref _displayChannel, display);
                         Spawn(name, critical: true, () => display.RunAsync(_stop.Token));
                         break;

@@ -71,7 +71,13 @@ public sealed partial class SessionWindow : Window
 
         if (profile is not null)
         {
-            _session = new SpiceSession(profile);
+            // JPEG (WIC) e video (Media Foundation): si annunciano solo i codec che questo PC decodifica.
+            // WSC_PREFER_VIDEO_CODECS=1 chiede H.264 al server (vedi DisplayChannel.SendVideoCodecPreference).
+            _session = new SpiceSession(profile)
+            {
+                MediaDecoders = SpiceKit.Windows.Media.WindowsMediaDecoders.Shared,
+                SendVideoCodecPreference = Environment.GetEnvironmentVariable("WSC_PREFER_VIDEO_CODECS") == "1",
+            };
             Closed += (_, _) => _ = _session.DisposeAsync().AsTask();
             KeyboardHook.Register(_hwnd, OnKey);
             ShowState(SessionState.Connecting);
@@ -118,6 +124,9 @@ public sealed partial class SessionWindow : Window
 
     /// <summary>Modalità del puntatore in uso (per l'autoverifica).</summary>
     internal MouseModes? MouseMode => _session?.MouseMode;
+
+    /// <summary>Fotogrammi video decodificati e scartati (per l'autoverifica).</summary>
+    internal (int Decoded, int Dropped) VideoFrames => _session?.VideoFrames ?? (0, 0);
 
     /// <summary>Input inviati all'ospite (per l'autoverifica).</summary>
     internal int InputsSent => _session?.InputsSent ?? 0;

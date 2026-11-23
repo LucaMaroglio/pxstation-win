@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SpiceKit\SpiceKit.csproj" />
+    <ProjectReference Include="..\SpiceKit.Windows\SpiceKit.Windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>

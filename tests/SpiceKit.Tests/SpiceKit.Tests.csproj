@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- Windows: si provano anche i decoder di SpiceKit.Windows (WIC, Media Foundation). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsTestProject>true</IsTestProject>
     <!-- xunit v3: i progetti di test sono eseguibili. -->
     <OutputType>Exe</OutputType>
@@ -10,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\SpiceKit\SpiceKit.csproj" />
+    <ProjectReference Include="..\..\src\SpiceKit.Windows\SpiceKit.Windows.csproj" />
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>

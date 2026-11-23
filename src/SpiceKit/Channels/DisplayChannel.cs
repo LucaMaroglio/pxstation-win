@@ -145,6 +145,14 @@ public sealed partial class DisplayChannel
         return CapabilitySet.FromBits([.. bits]);
     }
 
+    /// <summary>
+    /// Invia <c>PREFERRED_VIDEO_CODEC_TYPE</c> (H.264 prima di MJPEG). Spento per impostazione
+    /// predefinita, come in remote-viewer: QEMU 11.1 per Windows va in crash (e con lui la VM)
+    /// appena lo riceve, anche con il solo MJPEG. Senza, il server sceglie fra i codec annunciati
+    /// nell'ordine della sua opzione <c>video-codecs</c>.
+    /// </summary>
+    public bool SendVideoCodecPreference { get; init; }
+
     /// <summary>Budget delle superfici in pixel (ridotto solo nei test).</summary>
     internal long SurfacePixelBudget { get; init; } = MaxSurfacePixels;
 
@@ -165,9 +173,9 @@ public sealed partial class DisplayChannel
                     .ConfigureAwait(false);
             }
             var codecs = VideoCodecsOf(_decoders);
-            if (codecs.Count > 0 && _connection.ServerCaps.Contains((int)DisplayCapability.PrefVideoCodecType))
+            if (SendVideoCodecPreference && codecs.Count > 0 && _connection.ServerCaps.Contains((int)DisplayCapability.PrefVideoCodecType))
             {
-                // Prima i codec decodificati in hardware; il server ripiega su quello che sa codificare.
+                // Prima H.264/H.265; il server ripiega su quello che sa codificare.
                 await _connection.SendAsync(DisplayClientEncoder.PreferredVideoCodecs(codecs), cancellationToken).ConfigureAwait(false);
             }
             while (true)
