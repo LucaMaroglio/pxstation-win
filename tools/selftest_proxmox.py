@@ -34,8 +34,9 @@ def main() -> int:
             state["sha"] = hashlib.sha256(ssl.PEM_cert_to_DER_cert(handle.read())).hexdigest()
         ready_event.set()
 
-    threading.Thread(target=spike_env.run_fake_proxmox,
-                     kwargs={"port": 18006, "spice_base": 15900, "ready": ready}, daemon=True).start()
+    thread = threading.Thread(target=spike_env.run_fake_proxmox,
+                              kwargs={"port": 18006, "spice_base": 15900, "ready": ready}, daemon=True)
+    thread.start()
     if not ready_event.wait(60):
         print("finto Proxmox non avviato", file=sys.stderr)
         return 2
@@ -48,6 +49,8 @@ def main() -> int:
         code = subprocess.run([exe, "--self-test", report], env=env, timeout=180).returncode
     finally:
         state["server"].shutdown()
+        # serve() ferma i QEMU delle VM finte solo all'uscita: si aspetta che finisca.
+        thread.join(30)
     return code
 
 
