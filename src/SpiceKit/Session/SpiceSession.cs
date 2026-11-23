@@ -18,6 +18,9 @@ public abstract record SessionEvent
 
     public sealed record GuestNameChanged(string Name) : SessionEvent;
 
+    /// <summary>L'agente dell'ospite permette (o non più) di condividere gli appunti.</summary>
+    public sealed record ClipboardAvailable(bool Available) : SessionEvent;
+
     /// <summary>Canali offerti dal server e quelli collegati da questo client.</summary>
     public sealed record ChannelsLinked(IReadOnlyList<ChannelEntry> Offered, IReadOnlyList<ChannelEntry> Linked) : SessionEvent;
 }
@@ -33,7 +36,7 @@ public abstract record SessionEvent
 /// <para>Il canale display 0 alimenta <see cref="DisplayEvents"/> (M3), il canale cursor
 /// <see cref="CursorEvents"/>; <see cref="SendInput"/> passa tastiera e mouse al canale inputs (M4).</para>
 /// </remarks>
-public sealed class SpiceSession : IAsyncDisposable
+public sealed partial class SpiceSession : IAsyncDisposable
 {
     private readonly Channel<SessionEvent> _events = Channel.CreateUnbounded<SessionEvent>(new UnboundedChannelOptions { SingleReader = true });
     private readonly Channel<DisplayEvent> _display = Channel.CreateUnbounded<DisplayEvent>(new UnboundedChannelOptions { SingleReader = true });
@@ -210,7 +213,14 @@ public sealed class SpiceSession : IAsyncDisposable
                     Emit(new SessionEvent.MouseModeChanged(mode.Current));
                     break;
                 case MainEvent.AgentConnected agent:
+                    if (!agent.Connected) AgentGone();
                     Emit(new SessionEvent.AgentChanged(agent.Connected));
+                    break;
+                case MainEvent.AgentCapabilities caps:
+                    SetGuestAgentCapabilities(caps.Capabilities);
+                    break;
+                case MainEvent.AgentMessageReceived message:
+                    HandleAgentMessage(message.Message);
                     break;
                 case MainEvent.GuestName name:
                     Emit(new SessionEvent.GuestNameChanged(name.Name));
@@ -338,7 +348,9 @@ public sealed class SpiceSession : IAsyncDisposable
         _events.Writer.TryComplete();
         _display.Writer.TryComplete();
         _cursor.Writer.TryComplete();
+        _clipboard.Writer.TryComplete();
         Volatile.Write(ref _inputs, null);
+        AgentGone();
     }
 
     private void SetState(SessionState state)

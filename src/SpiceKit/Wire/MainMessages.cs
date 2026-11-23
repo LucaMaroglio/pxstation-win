@@ -93,6 +93,9 @@ public static class MainClientEncoder
     /// <summary><c>SPICE_MSGC_MAIN_AGENT_TOKEN</c>: restituisce gettoni di ricezione al server.</summary>
     public static SpiceMessage AgentToken(uint tokens) => UInt32Message(MainClientMessage.AgentToken, tokens);
 
+    /// <summary><c>SPICE_MSGC_MAIN_AGENT_DATA</c>: un pezzo (≤ 2048 byte) di un messaggio per l'agente.</summary>
+    public static SpiceMessage AgentData(byte[] chunk) => new((ushort)MainClientMessage.AgentData, chunk);
+
     private static SpiceMessage UInt32Message(MainClientMessage type, uint value)
     {
         var writer = new ByteWriter(4);
