@@ -127,7 +127,11 @@ public sealed partial class ProxmoxClient : IDisposable
     /// <paramref name="list"/> con le VM in pausa riconosciute: una richiesta di stato per VM in
     /// esecuzione, al massimo 8 alla volta; se lo stato non si legge resta quello elencato.
     /// </summary>
-    public async Task<IReadOnlyList<ProxmoxVM>> WithDetailedStatesAsync(IReadOnlyList<ProxmoxVM> list, CancellationToken cancellationToken = default)
+    /// <param name="list">Elenco da completare.</param>
+    /// <param name="onError">Chiamata per ogni VM il cui stato non si è potuto leggere (diagnostica).</param>
+    /// <param name="cancellationToken">Annullamento.</param>
+    public async Task<IReadOnlyList<ProxmoxVM>> WithDetailedStatesAsync(IReadOnlyList<ProxmoxVM> list,
+        Action<ProxmoxVM, ProxmoxException>? onError = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(list);
         var result = list.ToArray();
@@ -140,9 +144,9 @@ public sealed partial class ProxmoxClient : IDisposable
                 var vm = list[index];
                 result[index] = vm with { Status = await StatusAsync(vm.Node, vm.VmId, cancellationToken).ConfigureAwait(false) };
             }
-            catch (ProxmoxException)
+            catch (ProxmoxException error)
             {
-                // resta lo stato elencato
+                onError?.Invoke(list[index], error); // resta lo stato elencato
             }
             finally
             {
@@ -291,7 +295,24 @@ public sealed partial class ProxmoxClient : IDisposable
         return chain.Build(leaf);
     }
 
+    /// <summary>
+    /// Le letture (GET) si ripetono una volta se la connessione cade prima della risposta; le
+    /// azioni (POST) mai, perché potrebbero essere già state eseguite.
+    /// </summary>
     private async Task<JsonDocument> RequestAsync(HttpMethod method, string path, List<KeyValuePair<string, string>>? form, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendOnceAsync(method, path, form, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ProxmoxException error) when (method == HttpMethod.Get && error.Kind == ProxmoxErrorKind.Transport
+                                             && error.InnerException is HttpRequestException or IOException)
+        {
+            return await SendOnceAsync(method, path, form, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<JsonDocument> SendOnceAsync(HttpMethod method, string path, List<KeyValuePair<string, string>>? form, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, path);
         request.Headers.TryAddWithoutValidation("Authorization", _authorization);

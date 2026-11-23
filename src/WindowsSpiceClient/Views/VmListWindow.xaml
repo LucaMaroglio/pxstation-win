@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="WindowsSpiceClient.Views.VmListWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:WindowsSpiceClient.Views">
+
+    <Grid x:Name="Root">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TitleBar x:Name="AppTitleBar" x:Uid="VmListTitleBar" Title="Macchine virtuali">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="ms-appx:///Assets/app-64.png" />
+            </TitleBar.IconSource>
+        </TitleBar>
+
+        <!-- Barra dei comandi: Aggiorna, Apri file…; il resto nel menu "Altro" (…). -->
+        <CommandBar Grid.Row="1" DefaultLabelPosition="Right" HorizontalAlignment="Left" Margin="8,0,8,0">
+            <AppBarButton x:Name="RefreshButton" x:Uid="RefreshCommand" Icon="Refresh" Click="OnRefresh">
+                <AppBarButton.KeyboardAccelerators>
+                    <KeyboardAccelerator Modifiers="Control" Key="R" />
+                    <KeyboardAccelerator Key="F5" />
+                </AppBarButton.KeyboardAccelerators>
+            </AppBarButton>
+            <AppBarButton x:Uid="OpenFileCommand" Icon="OpenFile" Click="OnOpenFile">
+                <AppBarButton.KeyboardAccelerators>
+                    <KeyboardAccelerator Modifiers="Control" Key="O" />
+                </AppBarButton.KeyboardAccelerators>
+            </AppBarButton>
+            <CommandBar.SecondaryCommands>
+                <AppBarButton x:Uid="PreferencesCommand" Icon="Setting" Click="OnPreferences" />
+                <AppBarSeparator />
+                <AppBarButton x:Uid="AboutCommand" Click="OnAbout">
+                    <AppBarButton.Icon>
+                        <FontIcon Glyph="&#xE946;" />
+                    </AppBarButton.Icon>
+                </AppBarButton>
+                <AppBarButton x:Uid="QuitCommand" Click="OnQuit">
+                    <AppBarButton.Icon>
+                        <FontIcon Glyph="&#xE7E8;" />
+                    </AppBarButton.Icon>
+                    <AppBarButton.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Q" />
+                    </AppBarButton.KeyboardAccelerators>
+                </AppBarButton>
+            </CommandBar.SecondaryCommands>
+        </CommandBar>
+
+        <InfoBar x:Name="ErrorBar" Grid.Row="2" Margin="16,4,16,4" Severity="Error" IsOpen="False" IsClosable="True" />
+
+        <!-- Nessun server configurato. -->
+        <StackPanel x:Name="EmptyState" Grid.Row="3" Spacing="12" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    MaxWidth="420" Padding="24">
+            <FontIcon Glyph="&#xE968;" FontSize="56" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <TextBlock x:Uid="NoServersTitle" Style="{StaticResource SubtitleTextBlockStyle}" HorizontalAlignment="Center" />
+            <TextBlock x:Uid="NoServersText" TextWrapping="Wrap" TextAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Button x:Uid="ConfigureServersButton" HorizontalAlignment="Center" Style="{StaticResource AccentButtonStyle}"
+                    Click="OnConfigureServers" />
+        </StackPanel>
+
+        <!-- Elenco: un gruppo per server, una scheda per VM (stile Impostazioni di Windows 11). -->
+        <ScrollViewer x:Name="ListState" Grid.Row="3" Visibility="Collapsed">
+            <ItemsControl x:Name="Sections" Margin="16,4,16,16">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:ServerSectionModel">
+                        <StackPanel Spacing="4" Margin="0,8,0,8">
+                            <TextBlock Text="{x:Bind Title}" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind MessageVisibility, Mode=OneWay}" Margin="2,0,0,4">
+                                <FontIcon Glyph="&#xE7BA;" FontSize="14" Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                          Visibility="{x:Bind ErrorVisibility, Mode=OneWay}" VerticalAlignment="Top" Margin="0,2,0,0" />
+                                <TextBlock Text="{x:Bind Message, Mode=OneWay}" TextWrapping="Wrap" MaxWidth="560"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{x:Bind Rows}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="3" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:VmRowModel">
+                                        <Grid Padding="16,10,8,10" ColumnSpacing="12" MinHeight="64"
+                                              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                              CornerRadius="{StaticResource OverlayCornerRadius}"
+                                              ContextRequested="OnRowContextRequested">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Width="10" Height="10" Fill="{x:Bind StatusBrush, Mode=OneWay}" VerticalAlignment="Center"
+                                                     ToolTipService.ToolTip="{x:Bind StatusLabel, Mode=OneWay}" />
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind Caption, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </StackPanel>
+                                            <ProgressRing Grid.Column="2" Width="20" Height="20" IsActive="{x:Bind Busy, Mode=OneWay}"
+                                                          Visibility="{x:Bind BusyVisibility, Mode=OneWay}" />
+                                            <Button Grid.Column="3" Content="{x:Bind ButtonLabel, Mode=OneWay}" MinWidth="96"
+                                                    IsEnabled="{x:Bind IsIdle, Mode=OneWay}" Click="OnRowButton"
+                                                    ToolTipService.ToolTip="{x:Bind ButtonToolTip, Mode=OneWay}" />
+                                            <Button Grid.Column="4" x:Uid="PowerButton" Padding="8" Background="Transparent" BorderThickness="0"
+                                                    IsEnabled="{x:Bind IsIdle, Mode=OneWay}" Click="OnPowerButton">
+                                                <FontIcon Glyph="&#xE7E8;" FontSize="16" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</Window>

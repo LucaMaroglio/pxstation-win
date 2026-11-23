@@ -55,19 +55,31 @@ windows-spice-client/
 ├── WindowsSpiceClient.sln
 ├── src/
 │   ├── SpiceKit/                net10.0, NESSUNA dipendenza da WinUI/Direct3D
-│   │   └── Wire/                ByteReader, ByteWriter, WireException (M0)
+│   │   ├── Wire/                ByteReader, ByteWriter, WireException (M0)
+│   │   ├── VVFile/              VVFileParser, ConnectionProfile, SecretTicket, Hotkey (M1)
+│   │   ├── UsbRedirWire/        UsbFilter (M1; il resto in M7)
+│   │   └── Proxmox/             ProxmoxClient (API + regole TLS), modelli, ProxmoxException (M1)
 │   └── WindowsSpiceClient/      app WinUI 3
 │       ├── Assets/              app.ico (multi-risoluzione), PNG
 │       ├── Display/             D3D11Presenter, SwapChainPanelInterop
-│       └── Diagnostics/         AppLog, SelfTest
-├── tests/SpiceKit.Tests/        xunit v3; Fixtures/ copiate da macos-spice-client
-└── tools/                       build.ps1, make_icon.py, capture-window.ps1
+│       ├── Diagnostics/         AppLog, SelfTest
+│       ├── Services/            AppController, ServerStore, Settings, CredentialStore,
+│       │                        FileAssociation, VmListLoader, Strings, JsonFiles
+│       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
+│       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session, Dialogs, WindowChrome
+├── tests/SpiceKit.Tests/        xunit v3; Fixtures/ copiate da macos-spice-client; TestHttpsServer
+└── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
 ```
 
-Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{VVFile,Transport,
-Channels,Agent,Codecs,UsbRedirWire,UsbEmulation,Proxmox,Session}`, il progetto
-`SpiceKit.Windows` (WASAPI, WinSCard, UsbDk, credenziali, Media Foundation; da creare quando
-serve la prima di queste parti) e, nell'app, `Views/`, `Input/`, `Shell/`, `Strings/it-IT/`.
+Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Transport,Channels,
+Agent,Codecs,UsbEmulation,Session}`, il progetto `SpiceKit.Windows` (WASAPI, WinSCard, UsbDk,
+Media Foundation; da creare quando serve la prima di queste parti) e, nell'app, `Input/`,
+`Shell/`. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
+righe di P/Invoke e servono solo all'interfaccia.
+
+Dati dell'app: `%APPDATA%\WindowsSpiceClient\` (`settings.json`, `servers.json`,
+`cluster-cas.json`, stessi nomi e campi del client Linux); segreti dei token in Gestione
+credenziali (`org.windowsspiceclient.WindowsSpiceClient/proxmox-token/<id>`).
 
 Regole:
 - `SpiceKit/Wire` e `SpiceKit/Codecs` sono **puri**: byte in ingresso, valori in uscita. Niente
@@ -85,14 +97,20 @@ Regole:
 tools\build.ps1                # build (avvisi = errori) + test
 tools\build.ps1 -SelfTest      # + autoverifica dell'app
 tools\build.ps1 -Publish       # + eseguibile autonomo Release in artifacts\win-x64
+tools\build.ps1 -Proxmox       # + autoverifica contro il finto Proxmox di ..\windows-spike (serve Python)
 ```
 
 - **.NET SDK:** se `dotnet` non è nel PATH, lo script usa `%LOCALAPPDATA%\Microsoft\dotnet`
   (installazione per utente con `dotnet-install.ps1`, senza amministratore).
 - **git:** MinGit portabile in `%LOCALAPPDATA%\Programs\MinGit\cmd\git.exe`.
-- **Autoverifica** (`WindowsSpiceClient.exe --self-test <cartella>`): rilegge un pixel dal
-  buffer Direct3D dopo un clear di colore noto, disegna l'albero XAML in `ui.png` con
-  `RenderTargetBitmap`, scrive `self-test.txt` ed esce.
+- **Autoverifica** (`WindowsSpiceClient.exe --self-test <cartella>`): apre una alla volta
+  Benvenuto, Macchine virtuali, Preferenze (due pagine) e una sessione, le disegna con
+  `RenderTargetBitmap` in PNG (`welcome.png`, `vmlist.png`, …), rilegge un pixel dal buffer
+  Direct3D dopo un clear di colore noto, scrive `self-test.txt` ed esce. Con `WSC_DATA_DIR`
+  (impostata da `build.ps1`) usa una configurazione isolata e un server di prova, rimosso alla
+  fine anche da Gestione credenziali; con `WSC_SELFTEST_SERVER` (impostata da
+  `selftest_proxmox.py`) usa il finto Proxmox e prova anche la connessione con `spiceproxy`.
+  **Guardare i PNG** dopo ogni modifica all'interfaccia.
   **Usarla al posto delle catture dello schermo:** nella VM di sviluppo (senza GPU, sessione
   remota) `CopyFromScreen` e `PrintWindow` restituiscono fotogrammi vecchi e le finestre a
   composizione appaiono nere anche quando sono disegnate correttamente.
@@ -147,5 +165,6 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | # | Stato |
 |---|---|
 | **M0** – soluzione, app WinUI 3 con icona, SpiceKit + test, swap chain D3D11, build locale | ✅ 23/11/2026 |
-| M1 – `.vv`, API Proxmox, Gestione credenziali, finestre Benvenuto / Macchine virtuali / Preferenze | da fare |
+| M1 – `.vv`, API Proxmox, Gestione credenziali, finestre Benvenuto / Macchine virtuali / Preferenze | ✅ 23/11/2026 |
+| M2 – trasporto (TCP, TLS, proxy CONNECT), link e autenticazione, canale main; istanza unica | da fare |
 | M2 … M9 | vedi PIANO.md §4 |

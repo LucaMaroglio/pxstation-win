@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="WindowsSpiceClient.Views.SessionWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid x:Name="Root" Loaded="OnRootLoaded">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TitleBar x:Name="AppTitleBar" Title="SPICE">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="ms-appx:///Assets/app-64.png" />
+            </TitleBar.IconSource>
+        </TitleBar>
+
+        <!-- M1: riepilogo del profilo letto; la connessione SPICE arriva con M2. -->
+        <InfoBar x:Name="ProfileInfo" x:Uid="SessionPendingBar" Grid.Row="1" Margin="12,0,12,8" IsOpen="True" IsClosable="False"
+                 Severity="Informational" />
+
+        <!-- Superficie Direct3D 11: qui verrà disegnato lo schermo della VM (M3). -->
+        <SwapChainPanel x:Name="DisplayPanel" Grid.Row="2" Margin="12,0,12,0" />
+
+        <InfoBar x:Name="RendererInfo" Grid.Row="3" Margin="12" IsOpen="True" IsClosable="True"
+                 Severity="Informational" Title="Renderer" />
+    </Grid>
+</Window>

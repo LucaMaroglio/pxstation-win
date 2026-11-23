@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Testi dell'interfaccia. Quelli condivisi con il client Linux vengono da
+  linux_spice_client/core/texts.py (adattati a Windows: Gestione credenziali al posto del
+  portachiavi, area di notifica, nessun remote-viewer).
+  Chiavi "Nome.Proprietà": usate da x:Uid nello XAML. Chiavi semplici: usate da Strings.Get.
+-->
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Comuni -->
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="Close" xml:space="preserve"><value>Chiudi</value></data>
+  <data name="Add" xml:space="preserve"><value>Aggiungi</value></data>
+  <data name="Save" xml:space="preserve"><value>Salva</value></data>
+  <data name="Remove" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="Loading" xml:space="preserve"><value>Caricamento…</value></data>
+  <data name="Connecting" xml:space="preserve"><value>Connessione…</value></data>
+  <data name="CredentialError" xml:space="preserve"><value>Gestione credenziali di Windows: {0}</value></data>
+
+  <!-- Informazioni -->
+  <data name="AboutTitle" xml:space="preserve"><value>Informazioni</value></data>
+  <data name="AboutVersion" xml:space="preserve"><value>Versione {0}</value></data>
+  <data name="About" xml:space="preserve"><value>Macchine virtuali Proxmox VE su Windows, con il protocollo SPICE implementato in C# e lo schermo disegnato con Direct3D.</value></data>
+  <data name="Credits" xml:space="preserve"><value>Basato su MacOS Spice Client di Paweł Więcaszek e su Linux Spice Client (licenza MIT).</value></data>
+
+  <!-- Benvenuto -->
+  <data name="WelcomeTitleBar.Title" xml:space="preserve"><value>Benvenuto</value></data>
+  <data name="WelcomeText.Text" xml:space="preserve"><value>Apri un file di connessione virt-viewer (.vv), per esempio quello che il browser scarica cliccando “SPICE” in Proxmox VE, oppure gestisci le macchine virtuali dei tuoi server Proxmox.</value></data>
+  <data name="OpenConnectionFileButton.Text" xml:space="preserve"><value>Apri file di connessione…</value></data>
+  <data name="VirtualMachinesButton.Text" xml:space="preserve"><value>Macchine virtuali…</value></data>
+  <data name="WelcomeDropHint.Text" xml:space="preserve"><value>oppure trascina qui un file .vv</value></data>
+  <data name="OpenCommit" xml:space="preserve"><value>Apri</value></data>
+  <data name="OpenFailedTitle" xml:space="preserve"><value>Impossibile aprire il file di connessione</value></data>
+
+  <!-- Macchine virtuali -->
+  <data name="VmListTitleBar.Title" xml:space="preserve"><value>Macchine virtuali</value></data>
+  <data name="RefreshCommand.Label" xml:space="preserve"><value>Aggiorna</value></data>
+  <data name="OpenFileCommand.Label" xml:space="preserve"><value>Apri file…</value></data>
+  <data name="PreferencesCommand.Label" xml:space="preserve"><value>Preferenze…</value></data>
+  <data name="AboutCommand.Label" xml:space="preserve"><value>Informazioni</value></data>
+  <data name="QuitCommand.Label" xml:space="preserve"><value>Esci</value></data>
+  <data name="NoServersTitle.Text" xml:space="preserve"><value>Nessun server Proxmox</value></data>
+  <data name="NoServersText.Text" xml:space="preserve"><value>Aggiungi un server Proxmox con un token API per avviare, arrestare e connetterti alle macchine virtuali da qui.</value></data>
+  <data name="ConfigureServersButton.Content" xml:space="preserve"><value>Configura server…</value></data>
+  <data name="PowerButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Alimentazione</value></data>
+  <data name="PowerButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Alimentazione</value></data>
+  <data name="EmptyTokenHint" xml:space="preserve"><value>Nessuna macchina virtuale è visibile a questo token API. Assegna al token (non solo al suo utente) VM.Audit, VM.PowerMgmt e VM.Console, per esempio il ruolo PVEVMUser su /vms, oppure disattiva la separazione dei privilegi.</value></data>
+  <data name="Connect" xml:space="preserve"><value>Connetti</value></data>
+  <data name="ResumeAndConnect" xml:space="preserve"><value>Riprendi e connetti</value></data>
+  <data name="StartAndConnect" xml:space="preserve"><value>Avvia e connetti</value></data>
+  <data name="ConnectToolTip" xml:space="preserve"><value>Apre {0} in una nuova finestra</value></data>
+  <data name="ConfirmResetTitle" xml:space="preserve"><value>Reset di “{0}”?</value></data>
+  <data name="ConfirmStopTitle" xml:space="preserve"><value>Spegnimento forzato di “{0}”?</value></data>
+  <data name="ConfirmPowerText" xml:space="preserve"><value>È come staccare la spina: il lavoro non salvato nella macchina virtuale va perso. Usa Arresta o Riavvia per far chiudere correttamente il sistema ospite.</value></data>
+  <data name="ConfirmResetAccept" xml:space="preserve"><value>Reset</value></data>
+  <data name="ConfirmStopAccept" xml:space="preserve"><value>Spegni</value></data>
+
+  <!-- Preferenze: Generale -->
+  <data name="PreferencesTitleBar.Title" xml:space="preserve"><value>Preferenze</value></data>
+  <data name="GeneralPageItem.Content" xml:space="preserve"><value>Generale</value></data>
+  <data name="ProxmoxPageItem.Content" xml:space="preserve"><value>Proxmox</value></data>
+  <data name="GeneralPageTitle.Text" xml:space="preserve"><value>Generale</value></data>
+  <data name="GroupConnection.Text" xml:space="preserve"><value>Connessione</value></data>
+  <data name="ReconnectTitle.Text" xml:space="preserve"><value>Riconnetti automaticamente quando la connessione cade</value></data>
+  <data name="ReconnectNote.Text" xml:space="preserve"><value>Riprova per circa due minuti, attendendo il ritorno della rete. Le sessioni Proxmox ottengono un nuovo ticket tramite l’API (serve il server configurato nella pagina Proxmox); il ticket di un file scaricato vale una sola volta.</value></data>
+  <data name="GroupDisplay.Text" xml:space="preserve"><value>Schermo</value></data>
+  <data name="FullScreenTitle.Text" xml:space="preserve"><value>Apri le sessioni a schermo intero</value></data>
+  <data name="FullScreenNote.Text" xml:space="preserve"><value>La risoluzione del sistema ospite si adatta allo schermo se nella VM è installato spice-vdagent.</value></data>
+  <data name="GroupDesktop.Text" xml:space="preserve"><value>Scrivania</value></data>
+  <data name="TrayTitle.Text" xml:space="preserve"><value>Mostra l’icona nell’area di notifica</value></data>
+  <data name="TrayNote.Text" xml:space="preserve"><value>Dall’icona si raggiungono le sessioni aperte, il menu di alimentazione e la riconnessione. Con l’icona attiva il programma resta in esecuzione anche senza finestre aperte.</value></data>
+  <data name="NotificationsTitle.Text" xml:space="preserve"><value>Mostra notifiche per le sessioni</value></data>
+  <data name="GroupVVFiles.Text" xml:space="preserve"><value>File di connessione (.vv)</value></data>
+  <data name="UseThisProgramButton.Content" xml:space="preserve"><value>Usa questo programma</value></data>
+  <data name="VVFootnote.Text" xml:space="preserve"><value>Aprendo con questo programma i file che il browser scarica cliccando “SPICE” in Proxmox, anche quelle sessioni hanno il menu di alimentazione e la riconnessione automatica.</value></data>
+  <data name="VVHandlerIsDefault" xml:space="preserve"><value>I file .vv si aprono con questo programma.</value></data>
+  <data name="VVHandlerOther" xml:space="preserve"><value>I file .vv ora si aprono con: {0}.</value></data>
+  <data name="NoProgram" xml:space="preserve"><value>nessun programma</value></data>
+  <data name="AssociationFailedTitle" xml:space="preserve"><value>Impossibile cambiare l’associazione</value></data>
+
+  <!-- Preferenze: Proxmox -->
+  <data name="ProxmoxPageTitle.Text" xml:space="preserve"><value>Server Proxmox</value></data>
+  <data name="NoServersInList.Text" xml:space="preserve"><value>Nessun server.</value></data>
+  <data name="AddServerButton.Content" xml:space="preserve"><value>Aggiungi…</value></data>
+  <data name="EditServerButton.Content" xml:space="preserve"><value>Modifica…</value></data>
+  <data name="RemoveServerButton.Content" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="ServersFootnote.Text" xml:space="preserve"><value>Usati per Avvia, Arresta, Riavvia, la finestra Macchine virtuali e la riconnessione. Crea un token API in Proxmox (Datacenter › Permissions › API Tokens) con VM.Audit, VM.PowerMgmt e VM.Console sulle tue VM. Il segreto viene conservato in Gestione credenziali di Windows.</value></data>
+  <data name="RemoveServerTitle" xml:space="preserve"><value>Rimuovi server</value></data>
+  <data name="RemoveServerText" xml:space="preserve"><value>Rimuovere “{0}”?
+
+Il token API di questo server verrà eliminato da Gestione credenziali di Windows.</value></data>
+
+  <!-- Editor dei server -->
+  <data name="AddServerTitle" xml:space="preserve"><value>Aggiungi server</value></data>
+  <data name="EditServerTitle" xml:space="preserve"><value>Modifica server</value></data>
+  <data name="ServerNameBox.Header" xml:space="preserve"><value>Nome</value></data>
+  <data name="ServerNameBox.PlaceholderText" xml:space="preserve"><value>Cluster ufficio</value></data>
+  <data name="ServerHostBox.Header" xml:space="preserve"><value>Host</value></data>
+  <data name="ServerHostBox.PlaceholderText" xml:space="preserve"><value>pve1.esempio.it</value></data>
+  <data name="ServerPortBox.Header" xml:space="preserve"><value>Porta</value></data>
+  <data name="ServerTokenBox.Header" xml:space="preserve"><value>ID token</value></data>
+  <data name="ServerTokenBox.PlaceholderText" xml:space="preserve"><value>utente@pve!spice</value></data>
+  <data name="ServerSecretBox.Header" xml:space="preserve"><value>Segreto token</value></data>
+  <data name="SecretKeepPlaceholder" xml:space="preserve"><value>lascia vuoto per mantenere quello salvato</value></data>
+  <data name="UntrustedCertBar.Title" xml:space="preserve"><value>Certificato non attendibile</value></data>
+  <data name="UntrustedCertBar.Message" xml:space="preserve"><value>Il certificato del server non è considerato attendibile da Windows né da una CA Proxmox già vista da questo programma.</value></data>
+  <data name="UntrustedCertHint.Text" xml:space="preserve"><value>Confrontalo con Proxmox › nodo › System › Certificates (pve-ssl.pem) prima di considerarlo attendibile.</value></data>
+  <data name="TrustCertificateButton.Content" xml:space="preserve"><value>Considera attendibile questo certificato</value></data>
+
+  <!-- Sessione (M1: riepilogo del profilo) -->
+  <data name="SessionPendingBar.Title" xml:space="preserve"><value>Profilo di connessione letto: la connessione SPICE arriva con la milestone M2</value></data>
+  <data name="SummaryProxmox" xml:space="preserve"><value>VM {0} sul nodo {1} ({2})</value></data>
+  <data name="SummaryHost" xml:space="preserve"><value>host {0}</value></data>
+  <data name="SummaryTls" xml:space="preserve"><value>porta TLS {0}</value></data>
+  <data name="SummaryPlain" xml:space="preserve"><value>porta in chiaro {0}</value></data>
+  <data name="SummaryProxy" xml:space="preserve"><value>proxy {0}:{1}</value></data>
+  <data name="SummaryVerified" xml:space="preserve"><value>certificato da verificare con la CA e il soggetto del file</value></data>
+</root>

@@ -12,7 +12,8 @@ public sealed record TestRequest(string Method, string Target, IReadOnlyDictiona
 
 /// <summary>
 /// Server HTTPS minimo in-process (una richiesta per connessione) per provare il client
-/// Proxmox e le regole TLS senza un Proxmox vero.
+/// Proxmox e le regole TLS senza un Proxmox vero. Un gestore che restituisce lo stato 0 fa
+/// chiudere la connessione senza risposta (rete che cade).
 /// </summary>
 public sealed class TestHttpsServer : IDisposable
 {
@@ -61,6 +62,7 @@ public sealed class TestHttpsServer : IDisposable
             var request = await ReadRequestAsync(tls);
             lock (Requests) Requests.Add(request);
             var (status, body) = _handler(request);
+            if (status == 0) return; // chiude la connessione senza rispondere
             var payload = Encoding.UTF8.GetBytes(body);
             var head = $"HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {payload.Length}\r\nConnection: close\r\n\r\n";
             await tls.WriteAsync(Encoding.ASCII.GetBytes(head));

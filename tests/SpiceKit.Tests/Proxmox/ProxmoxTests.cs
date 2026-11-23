@@ -251,7 +251,29 @@ public class ProxmoxTests
             ? (200, """{"data":{"status":"running","qmpstatus":"paused"}}""")
             : (200, VMList));
         using var client = new ProxmoxClient(Server(https, ca: pki.CaPem), Secret);
-        var vms = await client.WithDetailedStatesAsync(await client.VirtualMachinesAsync(Token), Token);
+        var vms = await client.WithDetailedStatesAsync(await client.VirtualMachinesAsync(Token), cancellationToken: Token);
         Assert.Equal(["paused", "stopped", "paused"], vms.Select(v => v.Status));
+    }
+
+    [Fact]
+    public async Task ReadsAreRetriedOnceWhenTheConnectionDrops()
+    {
+        using var pki = new TestPki();
+        var calls = 0;
+        using var https = new TestHttpsServer(pki.Server, _ => Interlocked.Increment(ref calls) == 1 ? (0, "") : (200, VMList));
+        using var client = new ProxmoxClient(Server(https, ca: pki.CaPem), Secret);
+        Assert.Equal(3, (await client.VirtualMachinesAsync(Token)).Count);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task ActionsAreNeverRetried()
+    {
+        using var pki = new TestPki();
+        using var https = new TestHttpsServer(pki.Server, _ => (0, ""));
+        using var client = new ProxmoxClient(Server(https, ca: pki.CaPem), Secret);
+        var error = await Assert.ThrowsAsync<ProxmoxException>(() => client.PerformAsync(PowerAction.Stop, "pve1", 101, Token));
+        Assert.Equal(ProxmoxErrorKind.Transport, error.Kind);
+        Assert.Single(https.Requests);
     }
 }

@@ -7,11 +7,13 @@
   tools\build.ps1                  # build + test
   tools\build.ps1 -SelfTest        # + autoverifica (renderer Direct3D e interfaccia XAML)
   tools\build.ps1 -Publish         # + eseguibile autonomo Release in artifacts\win-x64
+  tools\build.ps1 -Proxmox         # autoverifica contro il finto Proxmox di ..\windows-spike
 #>
 param(
     [ValidateSet('Debug', 'Release')] [string] $Configuration = 'Debug',
     [switch] $SelfTest,
-    [switch] $Publish
+    [switch] $Publish,
+    [switch] $Proxmox
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,16 +48,41 @@ try {
         Write-Host "Eseguibile: $exe"
     }
 
+    function Test-Report([string] $report, [string[]] $required) {
+        $lines = Get-Content (Join-Path $report 'self-test.txt') -Encoding UTF8
+        $lines | ForEach-Object { Write-Host "  $_" }
+        $captures = @($lines -cmatch '^xaml: OK').Count
+        if ($lines -cmatch 'ERRORE' -or $captures -lt 5) { throw 'Autoverifica non superata.' }
+        foreach ($pattern in $required) {
+            if (-not ($lines -cmatch $pattern)) { throw "Autoverifica non superata: manca '$($pattern)'." }
+        }
+        Write-Host "  immagini dell'interfaccia: $report\*.png"
+    }
+
     if ($SelfTest) {
         $report = Join-Path $root 'artifacts\self-test'
         Remove-Item -Recurse -Force $report -ErrorAction SilentlyContinue
         Write-Host "`n=== Autoverifica ($exe)" -ForegroundColor Cyan
-        $process = Start-Process $exe -ArgumentList '--self-test', $report -PassThru
-        if (-not $process.WaitForExit(60000)) { Stop-Process -Id $process.Id; throw 'Autoverifica: timeout.' }
-        $lines = Get-Content (Join-Path $report 'self-test.txt') -Encoding UTF8
-        $lines | ForEach-Object { Write-Host "  $_" }
-        if ($lines -match 'ERRORE' -or -not ($lines -match '^xaml: OK')) { throw 'Autoverifica non superata.' }
-        Write-Host "  immagine dell'interfaccia: $(Join-Path $report 'ui.png')"
+        # Configurazione isolata: l'autoverifica aggiunge un server di prova senza toccare quella reale.
+        $env:WSC_DATA_DIR = Join-Path $report 'data'
+        try {
+            $process = Start-Process $exe -ArgumentList '--self-test', "`"$report`"" -PassThru
+            if (-not $process.WaitForExit(120000)) { Stop-Process -Id $process.Id; throw 'Autoverifica: timeout.' }
+        }
+        finally {
+            Remove-Item Env:WSC_DATA_DIR
+        }
+        Test-Report $report @('^risorse: OK', '^direct3d: OK', 'errore mostrato')
+    }
+
+    if ($Proxmox) {
+        $report = Join-Path $root 'artifacts\self-test-proxmox'
+        Remove-Item -Recurse -Force $report -ErrorAction SilentlyContinue
+        $python = (Get-Command python -ErrorAction SilentlyContinue | Where-Object Source -notlike '*WindowsApps*').Source
+        if (-not $python) { $python = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe' }
+        if (-not (Test-Path $python)) { throw 'Python non trovato (serve per il finto Proxmox).' }
+        Invoke-Step "Autoverifica con il finto Proxmox ($exe)" { & $python (Join-Path $PSScriptRoot 'selftest_proxmox.py') $exe $report }
+        Test-Report $report @('^risorse: OK', '^direct3d: OK', '=paused', '^connessione .*: OK')
     }
 
     Write-Host "`nTutto OK." -ForegroundColor Green

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="WindowsSpiceClient.Views.ServerEditorDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Style="{StaticResource DefaultContentDialogStyle}"
+    DefaultButton="Primary"
+    PrimaryButtonClick="OnPrimary">
+
+    <ContentDialog.Resources>
+        <x:Double x:Key="ContentDialogMaxWidth">560</x:Double>
+    </ContentDialog.Resources>
+
+    <StackPanel Spacing="12" MinWidth="440">
+        <TextBox x:Name="NameBox" x:Uid="ServerNameBox" TextChanged="OnChanged" />
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="120" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="HostBox" x:Uid="ServerHostBox" TextChanged="OnChanged" />
+            <NumberBox x:Name="PortBox" x:Uid="ServerPortBox" Grid.Column="1" Minimum="1" Maximum="65535"
+                       SpinButtonPlacementMode="Hidden" ValidationMode="InvalidInputOverwritten" />
+        </Grid>
+        <TextBox x:Name="TokenBox" x:Uid="ServerTokenBox" TextChanged="OnChanged" />
+        <PasswordBox x:Name="SecretBox" x:Uid="ServerSecretBox" PasswordChanged="OnChanged" />
+
+        <InfoBar x:Name="TrustBar" x:Uid="UntrustedCertBar" Severity="Warning" IsOpen="False" IsClosable="False">
+            <InfoBar.Content>
+                <StackPanel Spacing="8" Margin="0,0,0,12">
+                    <TextBlock x:Name="FingerprintText" FontFamily="Consolas" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                    <TextBlock x:Uid="UntrustedCertHint" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <Button x:Uid="TrustCertificateButton" Click="OnTrust" />
+                </StackPanel>
+            </InfoBar.Content>
+        </InfoBar>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <ProgressRing x:Name="Progress" Width="16" Height="16" IsActive="False" />
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" MaxWidth="480"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>

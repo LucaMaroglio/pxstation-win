@@ -24,6 +24,8 @@
     <SelfContained>true</SelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- Testi in Strings\it-IT\Resources.resw: l'italiano è anche la lingua di riserva. -->
+    <DefaultLanguage>it-IT</DefaultLanguage>
   </PropertyGroup>
 
   <ItemGroup>
