@@ -30,8 +30,12 @@ namespace WindowsSpiceClient.Views;
 public sealed partial class SessionWindow : Window
 {
     private readonly D3D11Presenter? _presenter;
-    private readonly SpiceSession? _session;
     private readonly ConnectionProfile? _profile;
+    private readonly ProxmoxVMRef? _reference;
+    private readonly ClipboardBridge _clipboard;
+
+    /// <summary>La sessione in corso; dopo una riconnessione è un'altra, nella stessa finestra.</summary>
+    private SpiceSession? _session;
     private readonly KeyboardState _keyboard;
     private readonly PointerInput _pointer;
     private readonly GuestCursor _cursor;
@@ -47,7 +51,9 @@ public sealed partial class SessionWindow : Window
     {
         InitializeComponent();
         _profile = profile;
+        _reference = reference;
         _hwnd = WindowChrome.Handle(this);
+        _clipboard = new ClipboardBridge(DispatcherQueue, () => _session, () => _active);
         AppTitleBar.Title = vmName ?? profile?.DisplayTitle ?? AppPaths.AppName;
         WindowChrome.Apply(this, Root, AppTitleBar, 1024, 720, minWidth: 480, minHeight: 360);
         _summary = profile is null ? "" : Summary(profile, reference);
@@ -66,24 +72,18 @@ public sealed partial class SessionWindow : Window
             KeyboardHook.Unregister(_hwnd);
             _pointer.Release();
             _cursor.Dispose();
+            _clipboard.Dispose();
+            StopReconnecting();
+            CancelTransfers();
+            if (_session is { } current) _ = current.DisposeAsync().AsTask();
+            _session = null;
         };
         if (fullScreen) SetFullScreen(true);
 
         if (profile is not null)
         {
-            // JPEG (WIC) e video (Media Foundation): si annunciano solo i codec che questo PC decodifica.
-            // WSC_PREFER_VIDEO_CODECS=1 chiede H.264 al server (vedi DisplayChannel.SendVideoCodecPreference).
-            _session = new SpiceSession(profile)
-            {
-                MediaDecoders = SpiceKit.Windows.Media.WindowsMediaDecoders.Shared,
-                SendVideoCodecPreference = Environment.GetEnvironmentVariable("WSC_PREFER_VIDEO_CODECS") == "1",
-            };
-            Closed += (_, _) => _ = _session.DisposeAsync().AsTask();
             KeyboardHook.Register(_hwnd, OnKey);
-            ShowState(SessionState.Connecting);
-            _ = RunSessionAsync(_session);
-            _ = RunDisplayAsync(_session);
-            _ = RunCursorAsync(_session);
+            StartSession(profile);
         }
 
         // Diagnostica: WSC_RENDERER=none esclude Direct3D (per distinguere problemi del renderer da quelli di WinUI).
@@ -139,6 +139,26 @@ public sealed partial class SessionWindow : Window
 
     /// <summary>Lo schermo della VM come si trova nella texture Direct3D (per l'autoverifica).</summary>
     internal SurfaceCapture? CaptureScreen() => _presenter?.CaptureSurface();
+
+    /// <summary>Apre una sessione (la prima o quella di una riconnessione) e ne collega gli eventi alla finestra.</summary>
+    private void StartSession(ConnectionProfile profile)
+    {
+        // JPEG (WIC) e video (Media Foundation): si annunciano solo i codec che questo PC decodifica.
+        // WSC_PREFER_VIDEO_CODECS=1 chiede H.264 al server (vedi DisplayChannel.SendVideoCodecPreference).
+        var session = new SpiceSession(profile)
+        {
+            MediaDecoders = SpiceKit.Windows.Media.WindowsMediaDecoders.Shared,
+            SendVideoCodecPreference = Environment.GetEnvironmentVariable("WSC_PREFER_VIDEO_CODECS") == "1",
+        };
+        _session = session;
+        _agent = false;
+        _clipboard.SetAvailable(false);
+        ShowState(SessionState.Connecting);
+        _ = RunSessionAsync(session);
+        _ = RunDisplayAsync(session);
+        _ = RunCursorAsync(session);
+        _ = RunClipboardAsync(session);
+    }
 
     /// <summary>Esegue un comando della sessione come la sua scorciatoia (menu e autoverifica).</summary>
     internal void Perform(HotkeyAction action)
@@ -248,6 +268,7 @@ public sealed partial class SessionWindow : Window
         var reader = session.DisplayEvents;
         while (await reader.WaitToReadAsync())
         {
+            if (!ReferenceEquals(session, _session)) return; // sostituita da una riconnessione
             var present = false;
             while (reader.TryRead(out var value))
             {
@@ -284,7 +305,17 @@ public sealed partial class SessionWindow : Window
     {
         await foreach (var value in session.CursorEvents.ReadAllAsync())
         {
+            if (!ReferenceEquals(session, _session)) return;
             _cursor.Apply(value);
+        }
+    }
+
+    private async Task RunClipboardAsync(SpiceSession session)
+    {
+        await foreach (var value in session.ClipboardEvents.ReadAllAsync())
+        {
+            if (!ReferenceEquals(session, _session)) return;
+            await _clipboard.HandleAsync(value);
         }
     }
 
@@ -304,9 +335,14 @@ public sealed partial class SessionWindow : Window
         // Gli eventi arrivano da altri thread; l'attesa riprende sul thread dell'interfaccia.
         await foreach (var value in session.Events.ReadAllAsync())
         {
+            if (!ReferenceEquals(session, _session)) return;
             switch (value)
             {
+                case SessionEvent.StateChanged { State.Kind: SessionStateKind.Disconnected } ended:
+                    OnSessionEnded(ended.State);
+                    break;
                 case SessionEvent.StateChanged changed:
+                    if (changed.State.Kind == SessionStateKind.Connected) OnSessionConnected();
                     ShowState(changed.State);
                     break;
                 case SessionEvent.ChannelsLinked linked:
@@ -325,6 +361,11 @@ public sealed partial class SessionWindow : Window
                     break;
                 case SessionEvent.AgentChanged agent:
                     _agent = agent.Connected;
+                    if (!agent.Connected) _clipboard.SetAvailable(false);
+                    ScheduleGuestResize();
+                    break;
+                case SessionEvent.ClipboardAvailable clipboard:
+                    _clipboard.SetAvailable(clipboard.Available);
                     break;
             }
         }
@@ -346,8 +387,10 @@ public sealed partial class SessionWindow : Window
         switch (state.Kind)
         {
             case SessionStateKind.Connecting:
-                ProfileInfo.Severity = InfoBarSeverity.Informational;
-                ProfileInfo.Title = Strings.Get("SessionConnecting");
+                ProfileInfo.Severity = _attempt > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Informational;
+                ProfileInfo.Title = _attempt > 0
+                    ? Strings.Format("SessionReconnectingNow", _attempt, _policy.MaxAttempts)
+                    : Strings.Get("SessionConnecting");
                 ProfileInfo.Message = _summary;
                 break;
             case SessionStateKind.Connected:
@@ -375,6 +418,7 @@ public sealed partial class SessionWindow : Window
             _pointer.Release();
             if (AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen) SetFullScreen(false);
         }
+        UpdateReconnectButton();
     }
 
     /// <summary>Riepilogo senza ticket né CA; l'host Proxmox (che contiene un ticket del proxy) non viene mostrato.</summary>
@@ -417,6 +461,7 @@ public sealed partial class SessionWindow : Window
         if (width < 1 || height < 1) return;
         _presenter.Resize(width, height, DisplayPanel.CompositionScaleX, DisplayPanel.CompositionScaleY);
         _cursor.Refresh();
+        ScheduleGuestResize();
         // Lo schermo della VM, oppure (prima che arrivi) il nero dello sfondo.
         _presenter.Present();
     }

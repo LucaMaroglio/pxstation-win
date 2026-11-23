@@ -165,5 +165,23 @@ Il token API di questo server verrà eliminato da Gestione credenziali di Window
   <data name="DisplayPanel.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Tasti e clic vanno alla macchina virtuale.</value></data>
   <data name="SessionReleasedHint" xml:space="preserve"><value>Mouse e tastiera rilasciati: fai clic sullo schermo della VM per riprenderli ({0} per rilasciarli di nuovo).</value></data>
   <data name="SessionCaptureHint" xml:space="preserve"><value>Fai clic sullo schermo della VM per catturare il mouse; {0} lo rilascia.</value></data>
+  <data name="SessionConnectionLost" xml:space="preserve"><value>Connessione persa</value></data>
+  <data name="SessionReconnectingIn" xml:space="preserve"><value>Riconnessione tra {0} s (tentativo {1}/{2})</value></data>
+  <data name="SessionReconnectingNow" xml:space="preserve"><value>Riconnessione… (tentativo {0}/{1})</value></data>
+  <data name="SessionReconnect" xml:space="preserve"><value>Riconnetti</value></data>
+  <data name="SessionCancelReconnect" xml:space="preserve"><value>Annulla</value></data>
+  <data name="SessionReconnectCancelled" xml:space="preserve"><value>Riconnessione annullata.</value></data>
+  <data name="SessionGaveUp" xml:space="preserve"><value>Riconnessione non riuscita dopo diversi tentativi.</value></data>
+  <data name="SessionVmOff" xml:space="preserve"><value>La macchina virtuale è spenta.</value></data>
+  <data name="SessionOneTimeTicket" xml:space="preserve"><value>Il ticket del file di connessione vale una sola volta: aprine uno nuovo per riconnetterti.</value></data>
+  <data name="SessionNoApi" xml:space="preserve"><value>Per riconnettersi serve un nuovo ticket: aggiungi questo server nelle preferenze Proxmox così il programma può riconnettersi da solo.</value></data>
+  <data name="SessionReconnected" xml:space="preserve"><value>Riconnessa</value></data>
+  <data name="TransferTitle" xml:space="preserve"><value>Copia nella macchina virtuale</value></data>
+  <data name="TransferProgressText" xml:space="preserve"><value>{0} ({1} di {2})</value></data>
+  <data name="TransferDone" xml:space="preserve"><value>{0} copiato nella cartella dei download della macchina virtuale.</value></data>
+  <data name="TransferFailed" xml:space="preserve"><value>{0} non copiato: {1}</value></data>
+  <data name="TransferNotAFile" xml:space="preserve"><value>Si possono copiare solo file, non cartelle.</value></data>
+  <data name="TransferNoAgent" xml:space="preserve"><value>Per copiare file nella macchina virtuale serve l'agente SPICE (spice-vdagent) nel sistema ospite.</value></data>
+  <data name="TransferCancel" xml:space="preserve"><value>Annulla</value></data>
   <data name="SessionNoTicketHint" xml:space="preserve"><value>Con Proxmox premi di nuovo «Connetti» (o SPICE nell'interfaccia web) per ottenere un file nuovo.</value></data>
 </root>

@@ -115,6 +115,7 @@ internal static class SelfTest
                     if (opened.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected)
                     {
                         lines.Add(await ScreenResultAsync(opened, directory, running.Name));
+                        lines.Add(await ReconnectResultAsync(opened, running.Name, expectReconnect: true));
                     }
                     opened.Close();
                 }
@@ -146,6 +147,8 @@ internal static class SelfTest
                 lines.Add(await ScreenResultAsync(window, directory, name));
                 if (name.Contains("video", StringComparison.Ordinal)) lines.Add(await VideoResultAsync(window, directory, name));
                 else lines.Add(await InputResultAsync(window, directory, name));
+                // Ticket monouso senza server Proxmox configurato: niente riconnessione, ma la spiegazione.
+                if (name == "in-chiaro") lines.Add(await ReconnectResultAsync(window, name, expectReconnect: false));
             }
             await SettleAsync(window.RootElement, 300);
             lines.Add(await CaptureAsync(window.RootElement, directory, $"session-{name}.png"));
@@ -288,6 +291,29 @@ internal static class SelfTest
         }
         return string.Create(CultureInfo.InvariantCulture,
             $"video {name}: {(decoded >= 25 ? "OK" : "ERRORE")} {decoded} fotogrammi decodificati, {dropped} scartati (codec annunciati: {codecs}) -> {file}");
+    }
+
+    /// <summary>
+    /// Riconnessione (M6): si simula una caduta della rete. Con un server Proxmox configurato la
+    /// finestra chiede un ticket nuovo all'API e torna collegata con lo schermo; con un ticket
+    /// monouso deve fermarsi spiegando perché.
+    /// </summary>
+    private static async Task<string> ReconnectResultAsync(SessionWindow window, string name, bool expectReconnect)
+    {
+        var updates = window.ScreenUpdates;
+        await window.SimulateConnectionLossAsync();
+        await Task.Delay(500);
+        if (!expectReconnect)
+        {
+            var ended = window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Disconnected && window.ReconnectAttempt == 0;
+            return $"riconnessione {name}: {(ended ? "OK nessun tentativo" : "ERRORE")} · {window.StatusText.Replace('\n', ' ')}";
+        }
+        await WaitForAsync(() => window.Reconnections > 0 && window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected,
+            TimeSpan.FromSeconds(30));
+        await WaitForAsync(() => window.ScreenUpdates > updates, TimeSpan.FromSeconds(15));
+        var ok = window.Reconnections > 0 && window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected && window.ScreenUpdates > updates;
+        return string.Create(CultureInfo.InvariantCulture,
+            $"riconnessione {name}: {(ok ? "OK" : "ERRORE")} {window.Reconnections} riconnessioni, {window.ScreenUpdates - updates} aggiornamenti dopo · {window.StatusText.Replace('\n', ' ')}");
     }
 
     private static async Task<byte[]> EncodePngAsync(byte[] bgra, int width, int height)

@@ -92,6 +92,11 @@ internal static partial class Native
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     public static partial short GetKeyState(int virtualKey);
 
+    /// <summary>Numero che cambia a ogni modifica degli appunti di Windows.</summary>
+    [LibraryImport("user32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    public static partial uint GetClipboardSequenceNumber();
+
     [LibraryImport("user32.dll")]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [return: MarshalAs(UnmanagedType.Bool)]

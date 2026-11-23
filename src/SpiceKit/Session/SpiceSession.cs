@@ -183,6 +183,13 @@ public sealed partial class SpiceSession : IAsyncDisposable
 
     public Task DisconnectAsync() => TeardownAsync(null);
 
+    /// <summary>
+    /// Diagnostica (autoverifica della riconnessione): chiude la sessione come se la rete fosse
+    /// caduta, senza toccare il server.
+    /// </summary>
+    public Task SimulateConnectionLossAsync() =>
+        TeardownAsync(SessionFailure.From(TransportException.ConnectionFailed("connessione interrotta (prova)")));
+
     public async ValueTask DisposeAsync()
     {
         await TeardownAsync(null).ConfigureAwait(false);

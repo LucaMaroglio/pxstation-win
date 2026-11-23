@@ -70,9 +70,12 @@ windows-spice-client/
 │   │   ├── Channels/            ChannelConnection (protocollo base), ChannelOpener, MainChannel, SpiceLog (M2);
 │   │   │                        DisplayChannel (superfici, contropressione), ImageResolver (cache) (M3);
 │   │   │                        InputsChannel (coda, limite dei movimenti), CursorChannel (cache) (M4);
-│   │   │                        DisplayChannel.Streams (flussi video, report), MultimediaClock (M5)
+│   │   │                        DisplayChannel.Streams (flussi video, report), MultimediaClock (M5);
+│   │   │                        AgentOutbox (coda a gettoni verso l'agente), agente nel MainChannel (M6)
+│   │   ├── Agent/               AgentProtocol (messaggi, ricomposizione), ClipboardMessages, FileTransferMessages (M6)
 │   │   ├── Input/               KeyboardState: tasti Windows → scancode set 1, scorciatoie del .vv (M4)
-│   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2)
+│   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2);
+│   │                            SpiceSession.Agent (risoluzione, appunti, SendFileAsync), ReconnectPolicy (M6)
 │   ├── SpiceKit.Windows/        net10.0-windows, niente WinUI: Media/ WicJpegDecoder (Windows.Graphics.Imaging),
 │   │                            MediaFoundationVideoDecoder (H.264/H.265 → NV12), TransformOutput, WindowsMediaDecoders (M5)
 │   └── WindowsSpiceClient/      app WinUI 3
@@ -84,17 +87,17 @@ windows-spice-client/
 │       ├── Diagnostics/         AppLog, SelfTest
 │       ├── Shell/               SingleInstance (AppInstance; Main in Program.cs) (M2)
 │       ├── Services/            AppController, ServerStore, Settings, CredentialStore,
-│       │                        FileAssociation, VmListLoader, Strings, JsonFiles
+│       │                        FileAssociation, VmListLoader, Strings, JsonFiles, ClipboardBridge (M6)
 │       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
-│       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session, Dialogs, WindowChrome
+│       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session (+ .Agent: risoluzione e
+│                                copia di file; + .Reconnect: riconnessione nella stessa finestra), Dialogs, WindowChrome
 ├── tests/SpiceKit.Tests/        xunit v3 (net10.0-windows: prova anche SpiceKit.Windows); Fixtures/ copiate
 │                                da macos-spice-client; TestHttpsServer; H264TestEncoder (codificatore di Windows)
 └── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
 ```
 
-Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Agent,
-UsbEmulation}`, in `SpiceKit.Windows` WASAPI, WinSCard e UsbDk e, nell'app, in `Shell/`
-area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
+Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/UsbEmulation`, in
+`SpiceKit.Windows` WASAPI, WinSCard e UsbDk e, nell'app, in `Shell/` area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
 righe di P/Invoke e servono solo all'interfaccia.
 
 Dati dell'app: `%APPDATA%\WindowsSpiceClient\` (`settings.json`, `servers.json`,
@@ -144,6 +147,11 @@ tools\build.ps1 -Spice         # + autoverifica SPICE contro QEMU per Windows (s
   `selftest_spice.py`) con `streaming-video=all`: il server crea flussi MJPEG (20 strisce verticali da
   32 pixel, ognuna un flusso: piccoli salti fra le strisce sono normali) e l'autoverifica richiede
   fotogrammi decodificati (`screen-video-flusso.png`).
+- **Riconnessione e agente:** l'autoverifica col finto Proxmox simula una caduta della rete
+  (`SimulateConnectionLossAsync`) e la finestra deve ricollegarsi con un ticket nuovo dall'API; la
+  sessione QEMU `in-chiaro` (ticket monouso) deve fermarsi spiegando perché. Le VM di prova non hanno
+  un sistema ospite, quindi niente spice-vdagent: risoluzione, appunti e copia di file sono provati
+  da `SessionAgentTests` (server e agente finti) e vanno verificati su una VM vera.
 - **Video:** il client annuncia solo i codec decodificabili su quel PC (H.264/H.265 se Windows ha il
   decoder Media Foundation, sempre MJPEG). `PREFERRED_VIDEO_CODEC_TYPE` **non** si invia per
   impostazione predefinita (come remote-viewer): QEMU 11.1 per Windows va in crash appena lo riceve,
@@ -193,6 +201,11 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 - Dati del server ostili: controllare ogni lunghezza e offset (`ByteReader`), limiti di memoria
   come su macOS (superfici ≤ 16384², budget 512 MiB, ≤ 64 stream, palette limitata, USB ≤ 4 MiB
   per trasferimento). Ogni limite ha un test di regressione.
+- Agente (M6): coda verso l'agente limitata (32 MiB + 1 MiB, poi si scarta), messaggi dall'agente
+  ≤ 33 MiB, appunti ≤ 32 MiB (mai un'immagine troncata), immagini dell'ospite ≤ 64 Mi pixel
+  controllate e ricodificate prima di finire negli appunti. Gli appunti di Windows si offrono solo
+  con la finestra della sessione attiva e si danno solo se identici a quelli offerti; dall'ospite si
+  accetta solo il tipo chiesto. I nomi dei file copiati nell'ospite non possono contenere separatori.
 
 ## 7. Convenzioni
 
@@ -212,4 +225,5 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | M3 – display: superfici, comandi di disegno, decoder LZ, QUIC, GLZ e LZ4, presentazione D3D11 | ✅ 23/11/2026 |
 | M4 – canali inputs e cursor, hook della tastiera, puntatore client/server, cursore dell'ospite, scorciatoie del `.vv`, Ctrl+Alt+Canc, schermo intero | ✅ 23/11/2026 (provato contro QEMU/SeaBIOS; modalità client e forme del cursore da verificare su una VM reale) |
 | M5 – JPEG e JPEG con alfa (WIC), flussi MJPEG/H.264/H.265 (Media Foundation, decodifica software), report dei flussi, ≤ 64 flussi | ✅ 23/11/2026 (MJPEG provato contro QEMU; H.264 con il codificatore di Windows; H.264 da spice-server e DXVA da verificare) |
-| M6 … M9 | vedi PIANO.md §4 |
+| M6 – agente (risoluzione dinamica, appunti testo/PNG, copia di file trascinandoli), riconnessione nella stessa finestra | ✅ 23/11/2026 (riconnessione provata col finto Proxmox; agente provato con server finto, da verificare su VM con spice-vdagent; più schermi: solo il primo) |
+| M7 … M9 | vedi PIANO.md §4 |

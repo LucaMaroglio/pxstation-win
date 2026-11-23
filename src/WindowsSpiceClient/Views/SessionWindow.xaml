@@ -51,14 +51,23 @@
              Sopra, il cursore dell'ospite in modalità server (in modalità client è il cursore di sistema). -->
         <Border Grid.Row="2" Background="Black">
             <Grid>
-                <display:DisplaySurface x:Name="DisplayPanel" x:Uid="DisplayPanel" IsTabStop="True" />
+                <display:DisplaySurface x:Name="DisplayPanel" x:Uid="DisplayPanel" IsTabStop="True" AllowDrop="True"
+                                        DragOver="OnDragOver" Drop="OnDrop" />
                 <Canvas IsHitTestVisible="False">
                     <Image x:Name="CursorOverlay" Visibility="Collapsed" Stretch="Fill" />
                 </Canvas>
             </Grid>
         </Border>
 
-        <InfoBar x:Name="RendererInfo" Grid.Row="3" Margin="12" IsOpen="True" IsClosable="True"
-                 Severity="Informational" Title="Renderer" />
+        <StackPanel Grid.Row="3">
+            <!-- Copia di file nella VM (M6): sotto lo schermo, mai sopra. -->
+            <InfoBar x:Name="TransferInfo" Margin="12,8,12,8" IsOpen="False" IsClosable="True" Severity="Informational">
+                <InfoBar.Content>
+                    <ProgressBar x:Name="TransferProgress" Maximum="1" Margin="0,0,0,12" />
+                </InfoBar.Content>
+            </InfoBar>
+            <InfoBar x:Name="RendererInfo" Margin="12" IsOpen="True" IsClosable="True"
+                     Severity="Informational" Title="Renderer" />
+        </StackPanel>
     </Grid>
 </Window>

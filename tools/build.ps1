@@ -89,7 +89,8 @@ try {
         Remove-Item -Recurse -Force $report -ErrorAction SilentlyContinue
         $python = Get-Python
         Invoke-Step "Autoverifica con il finto Proxmox ($exe)" { & $python (Join-Path $PSScriptRoot 'selftest_proxmox.py') $exe $report }
-        Test-Report $report @('^risorse: OK', '^direct3d: OK', '=paused', '^connessione .*: OK', '^spice .*: connessa')
+        Test-Report $report @('^risorse: OK', '^direct3d: OK', '=paused', '^connessione .*: OK', '^spice .*: connessa',
+            '^riconnessione debian-test: OK')
     }
 
     if ($Spice) {
@@ -99,7 +100,7 @@ try {
         Invoke-Step "Autoverifica SPICE con QEMU ($exe)" { & $python (Join-Path $PSScriptRoot 'selftest_spice.py') $exe $report }
         Test-Report $report @('^direct3d: OK', '^spice in-chiaro: connessa', '^spice proxmox-tls: connessa',
             '^schermo in-chiaro: OK', '^schermo proxmox-tls: OK',
-            '^input in-chiaro: OK puntatore Server', '^input proxmox-tls: OK', '^video video: OK',
+            '^input in-chiaro: OK puntatore Server', '^input proxmox-tls: OK', '^video video: OK', '^riconnessione in-chiaro: OK nessun tentativo',
             '^spice ticket-errato: non riuscita \(ticket\)', '^spice senza server: non riuscita')
     }
 
