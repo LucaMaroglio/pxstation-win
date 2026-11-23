@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Imaging;
+using SpiceKit.Channels;
 using SpiceKit.Proxmox;
 using SpiceKit.VVFile;
 using Windows.Graphics.Imaging;
@@ -143,6 +144,7 @@ internal static class SelfTest
             if (window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected)
             {
                 lines.Add(await ScreenResultAsync(window, directory, name));
+                lines.Add(await InputResultAsync(window, directory, name));
             }
             await SettleAsync(window.RootElement, 300);
             lines.Add(await CaptureAsync(window.RootElement, directory, $"session-{name}.png"));
@@ -233,6 +235,40 @@ internal static class SelfTest
         await File.WriteAllBytesAsync(Path.Combine(directory, file), await EncodePngAsync(capture.Bgra, capture.Width, capture.Height));
         return string.Create(CultureInfo.InvariantCulture,
             $"schermo {name}: {(colors.Count > 1 ? "OK" : "VUOTO")} {capture.Width}x{capture.Height}, {window.ScreenUpdates} aggiornamenti, {colors.Count} colori -> {file}");
+    }
+
+    /// <summary>
+    /// Input verso l'ospite: un movimento e un clic del mouse, poi Ctrl+Alt+Canc come dal menu.
+    /// Il BIOS della VM di prova riavvia la macchina (tools/selftest_spice.py lo verifica con QMP)
+    /// e lo schermo ricomincia ad aggiornarsi; la sessione deve restare collegata.
+    /// </summary>
+    private static async Task<string> InputResultAsync(SessionWindow window, string directory, string name)
+    {
+        var mode = window.MouseMode;
+        if (mode == SpiceKit.Wire.MouseModes.Client)
+        {
+            window.SendInput(new InputEvent.Position(100, 100, SpiceKit.Wire.MouseButtons.None, 0));
+        }
+        else
+        {
+            window.SendInput(new InputEvent.Motion(5, 5, SpiceKit.Wire.MouseButtons.None));
+        }
+        window.SendInput(new InputEvent.Press(SpiceKit.Wire.MouseButton.Left, SpiceKit.Wire.MouseButtons.Left));
+        window.SendInput(new InputEvent.Release(SpiceKit.Wire.MouseButton.Left, SpiceKit.Wire.MouseButtons.None));
+        var before = window.ScreenUpdates;
+        window.Perform(SpiceKit.Input.HotkeyAction.SecureAttention);
+        await WaitForAsync(() => window.ScreenUpdates > before + 2, TimeSpan.FromSeconds(10));
+        await Task.Delay(1500);
+        var redrawn = window.ScreenUpdates - before;
+        var connected = window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected;
+        var file = $"screen-{name}-dopo-input.png";
+        if (window.CaptureScreen() is { } capture)
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, file), await EncodePngAsync(capture.Bgra, capture.Width, capture.Height));
+        }
+        var ok = connected && window.InputsSent >= 9 && redrawn > 0;
+        return string.Create(CultureInfo.InvariantCulture,
+            $"input {name}: {(ok ? "OK" : "ERRORE")} puntatore {mode}, {window.InputsSent} input inviati, {redrawn} aggiornamenti dopo Ctrl+Alt+Canc, {(connected ? "sessione collegata" : "sessione chiusa")} -> {file}");
     }
 
     private static async Task<byte[]> EncodePngAsync(byte[] bgra, int width, int height)

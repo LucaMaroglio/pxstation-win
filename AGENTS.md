@@ -56,21 +56,25 @@ windows-spice-client/
 ├── src/
 │   ├── SpiceKit/                net10.0, NESSUNA dipendenza da WinUI/Direct3D
 │   │   ├── Wire/                ByteReader, ByteWriter, WireException (M0); link, messaggi base/main (M2);
-│   │   │                        Geometry, Images, DisplayMessages (M3)
+│   │   │                        Geometry, Images, DisplayMessages (M3); InputsMessages, CursorMessages (M4)
 │   │   ├── VVFile/              VVFileParser, ConnectionProfile, SecretTicket, Hotkey (M1)
 │   │   ├── UsbRedirWire/        UsbFilter (M1; il resto in M7)
 │   │   ├── Proxmox/             ProxmoxClient (API + regole TLS), modelli, ProxmoxException (M1)
 │   │   ├── Transport/           TcpConnector (TCP, proxy CONNECT, TLS), TlsVerifier, ChannelLinker,
 │   │   │                        SpiceEndpoint, HostSubject/Pem, RsaTicketEncryptor (M2)
 │   │   ├── Codecs/              PixelBuffer + Canvas (operazioni raster), BitmapDecoder, LzDecoder,
-│   │   │                        QuicDecoder/QuicModel, GlzDecoder, Lz4Decoder (M3)
+│   │   │                        QuicDecoder/QuicModel, GlzDecoder, Lz4Decoder (M3); CursorDecoder (M4)
 │   │   ├── Channels/            ChannelConnection (protocollo base), ChannelOpener, MainChannel, SpiceLog (M2);
-│   │   │                        DisplayChannel (superfici, contropressione), ImageResolver (cache) (M3)
+│   │   │                        DisplayChannel (superfici, contropressione), ImageResolver (cache) (M3);
+│   │   │                        InputsChannel (coda, limite dei movimenti), CursorChannel (cache) (M4)
+│   │   ├── Input/               KeyboardState: tasti Windows → scancode set 1, scorciatoie del .vv (M4)
 │   │   └── Session/             SpiceSession (facciata), SessionFailure/SessionState (M2)
 │   └── WindowsSpiceClient/      app WinUI 3
 │       ├── Assets/              app.ico (multi-risoluzione), PNG
 │       ├── Display/             D3D11Presenter (texture della superficie, adattamento con la trasformazione
-│       │                        della swap chain), SwapChainPanelInterop
+│       │                        della swap chain), SwapChainPanelInterop, DisplaySurface (cursore sopra lo schermo)
+│       ├── Input/               KeyboardHook (WH_KEYBOARD_LL), PointerInput (client/server, cattura),
+│       │                        GuestCursor + CursorFactory (HCURSOR → InputCursor), Native (M4)
 │       ├── Diagnostics/         AppLog, SelfTest
 │       ├── Shell/               SingleInstance (AppInstance; Main in Program.cs) (M2)
 │       ├── Services/            AppController, ServerStore, Settings, CredentialStore,
@@ -83,8 +87,8 @@ windows-spice-client/
 
 Cartelle previste nelle prossime milestone (vedi PIANO.md §2): `SpiceKit/{Agent,
 UsbEmulation}`, il progetto `SpiceKit.Windows` (WASAPI, WinSCard, UsbDk,
-Media Foundation; da creare quando serve la prima di queste parti) e, nell'app, `Input/`
-(e in `Shell/` area di notifica e notifiche). Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
+Media Foundation; da creare quando serve la prima di queste parti) e, nell'app, in `Shell/`
+area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
 righe di P/Invoke e servono solo all'interfaccia.
 
 Dati dell'app: `%APPDATA%\WindowsSpiceClient\` (`settings.json`, `servers.json`,
@@ -126,6 +130,10 @@ tools\build.ps1 -Spice         # + autoverifica SPICE contro QEMU per Windows (s
   con CA e `host-subject` attraverso un proxy CONNECT, ticket errato). Per ogni sessione collegata
   salva lo schermo della VM letto dalla texture Direct3D in `screen-<nome>.png` (con le VM di prova:
   il testo del BIOS e di iPXE, 720×400), perché `RenderTargetBitmap` mostra lo SwapChainPanel nero.
+  Poi invia un movimento, un clic e Ctrl+Alt+Canc: il BIOS riavvia la VM, `selftest_spice.py`
+  controlla l'evento QMP `RESET` della VM in chiaro e lo schermo dopo il riavvio finisce in
+  `screen-<nome>-dopo-input.png`. Le VM di prova restano in modalità server del puntatore (la
+  modalità client richiede l'agente o un sistema ospite che attivi la tavoletta).
   **Guardare i PNG** dopo ogni modifica all'interfaccia.
   **Usarla al posto delle catture dello schermo:** nella VM di sviluppo (senza GPU, sessione
   remota) `CopyFromScreen` e `PrintWindow` restituiscono fotogrammi vecchi e le finestre a
@@ -187,4 +195,5 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | M1 – `.vv`, API Proxmox, Gestione credenziali, finestre Benvenuto / Macchine virtuali / Preferenze | ✅ 23/11/2026 |
 | M2 – trasporto (TCP, TLS, proxy CONNECT), link e autenticazione, canale main; istanza unica | ✅ 23/11/2026 |
 | M3 – display: superfici, comandi di disegno, decoder LZ, QUIC, GLZ e LZ4, presentazione D3D11 | ✅ 23/11/2026 |
-| M4 … M9 | vedi PIANO.md §4 |
+| M4 – canali inputs e cursor, hook della tastiera, puntatore client/server, cursore dell'ospite, scorciatoie del `.vv`, Ctrl+Alt+Canc, schermo intero | ✅ 23/11/2026 (provato contro QEMU/SeaBIOS; modalità client e forme del cursore da verificare su una VM reale) |
+| M5 … M9 | vedi PIANO.md §4 |

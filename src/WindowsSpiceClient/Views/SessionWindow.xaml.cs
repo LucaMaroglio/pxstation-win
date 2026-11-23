@@ -1,44 +1,83 @@
 using System.Globalization;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SpiceKit.Channels;
+using SpiceKit.Input;
 using SpiceKit.Proxmox;
 using SpiceKit.Session;
 using SpiceKit.VVFile;
+using SpiceKit.Wire;
 using WindowsSpiceClient.Diagnostics;
 using WindowsSpiceClient.Display;
+using WindowsSpiceClient.Input;
 using WindowsSpiceClient.Services;
 
 namespace WindowsSpiceClient.Views;
 
 /// <summary>
 /// Finestra di una sessione: collega la sessione SPICE appena aperta (i ticket Proxmox scadono in
-/// circa 30 secondi), ne mostra lo stato e disegna lo schermo della VM con Direct3D 11.
+/// circa 30 secondi), ne mostra lo stato, disegna lo schermo della VM con Direct3D 11 e le passa
+/// tastiera e mouse.
 /// </summary>
+/// <remarks>
+/// Tastiera: con la finestra in primo piano e lo schermo visibile, l'hook a basso livello manda
+/// all'ospite tutti i tasti (anche Alt+Tab e il tasto Windows), tranne le scorciatoie della sessione.
+/// «Rilascia mouse e tastiera» li restituisce a Windows fino al clic successivo sullo schermo.
+/// </remarks>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001",
-    Justification = "Una Window non è IDisposable: presenter e ticket vengono rilasciati nell'evento Closed.")]
+    Justification = "Una Window non è IDisposable: presenter, cursore e ticket vengono rilasciati nell'evento Closed.")]
 public sealed partial class SessionWindow : Window
 {
     private readonly D3D11Presenter? _presenter;
     private readonly SpiceSession? _session;
+    private readonly ConnectionProfile? _profile;
+    private readonly KeyboardState _keyboard;
+    private readonly PointerInput _pointer;
+    private readonly GuestCursor _cursor;
+    private readonly nint _hwnd;
     private readonly string _summary;
     private string? _guestName;
     private bool _agent;
     private bool _screenVisible;
+    private bool _active;
+    private bool _released;
 
-    internal SessionWindow(ConnectionProfile? profile, ProxmoxVMRef? reference, string? vmName)
+    internal SessionWindow(ConnectionProfile? profile, ProxmoxVMRef? reference, string? vmName, bool fullScreen = false)
     {
         InitializeComponent();
+        _profile = profile;
+        _hwnd = WindowChrome.Handle(this);
         AppTitleBar.Title = vmName ?? profile?.DisplayTitle ?? AppPaths.AppName;
         WindowChrome.Apply(this, Root, AppTitleBar, 1024, 720, minWidth: 480, minHeight: 360);
         _summary = profile is null ? "" : Summary(profile, reference);
+        _keyboard = new KeyboardState(profile, vk => Native.MapVirtualKey(vk, Native.MapvkVkToVscEx));
+        _cursor = new GuestCursor(DisplayPanel, CursorOverlay, () => _presenter?.Fit);
+        _pointer = new PointerInput(DisplayPanel, () => _presenter?.Fit, () => _session?.MouseMode ?? MouseModes.Server,
+            () => _hwnd, Send);
+        _pointer.Engaged += () => _released = false;
+        _pointer.LockChanged += UpdatePointerMode;
+        SecureAttentionItem.KeyboardAcceleratorTextOverride = KeyboardState.HotkeyOf(profile, HotkeyAction.SecureAttention).ToString();
+        FullscreenItem.KeyboardAcceleratorTextOverride = KeyboardState.HotkeyOf(profile, HotkeyAction.ToggleFullscreen).ToString();
+        ReleaseCursorItem.KeyboardAcceleratorTextOverride = KeyboardState.HotkeyOf(profile, HotkeyAction.ReleaseCursor).ToString();
+        Activated += OnActivated;
+        Closed += (_, _) =>
+        {
+            KeyboardHook.Unregister(_hwnd);
+            _pointer.Release();
+            _cursor.Dispose();
+        };
+        if (fullScreen) SetFullScreen(true);
+
         if (profile is not null)
         {
             _session = new SpiceSession(profile);
             Closed += (_, _) => _ = _session.DisposeAsync().AsTask();
+            KeyboardHook.Register(_hwnd, OnKey);
             ShowState(SessionState.Connecting);
             _ = RunSessionAsync(_session);
             _ = RunDisplayAsync(_session);
+            _ = RunCursorAsync(_session);
         }
 
         // Diagnostica: WSC_RENDERER=none esclude Direct3D (per distinguere problemi del renderer da quelli di WinUI).
@@ -77,6 +116,12 @@ public sealed partial class SessionWindow : Window
     /// <summary>Stato attuale della sessione (per l'autoverifica).</summary>
     internal SessionState? SessionState => _session?.State;
 
+    /// <summary>Modalità del puntatore in uso (per l'autoverifica).</summary>
+    internal MouseModes? MouseMode => _session?.MouseMode;
+
+    /// <summary>Input inviati all'ospite (per l'autoverifica).</summary>
+    internal int InputsSent => _session?.InputsSent ?? 0;
+
     /// <summary>Testo mostrato nella barra di stato (per l'autoverifica).</summary>
     internal string StatusText => $"{ProfileInfo.Title} · {ProfileInfo.Message}";
 
@@ -85,6 +130,105 @@ public sealed partial class SessionWindow : Window
 
     /// <summary>Lo schermo della VM come si trova nella texture Direct3D (per l'autoverifica).</summary>
     internal SurfaceCapture? CaptureScreen() => _presenter?.CaptureSurface();
+
+    /// <summary>Esegue un comando della sessione come la sua scorciatoia (menu e autoverifica).</summary>
+    internal void Perform(HotkeyAction action)
+    {
+        switch (action)
+        {
+            case HotkeyAction.SecureAttention:
+                // Ctrl+Alt+Canc: Windows non lo lascia intercettare, si invia la sequenza completa.
+                foreach (var code in KeyboardState.SecureAttentionSequence) Send(new InputEvent.KeyDown(code));
+                foreach (var code in KeyboardState.SecureAttentionSequence.Reverse()) Send(new InputEvent.KeyUp(code));
+                break;
+            case HotkeyAction.ToggleFullscreen:
+                SetFullScreen(AppWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen);
+                break;
+            case HotkeyAction.ReleaseCursor:
+                _released = true;
+                ReleaseGuestInput();
+                break;
+        }
+    }
+
+    /// <summary>Inoltra un input all'ospite (anche per l'autoverifica).</summary>
+    internal void SendInput(InputEvent input) => _session?.SendInput(input);
+
+    private void Send(InputEvent input) => SendInput(input);
+
+    // MARK: tastiera
+
+    /// <summary>La tastiera va all'ospite: schermo visibile, finestra attiva, non rilasciata.</summary>
+    private bool Captures => _screenVisible && _active && !_released && _session?.HasInputs == true;
+
+    /// <summary>Chiamato dall'hook per ogni tasto con la finestra in primo piano; <see langword="true"/> lo trattiene.</summary>
+    private bool OnKey(KeyStroke key)
+    {
+        if (!Captures) return false;
+        switch (_keyboard.Process(key.VirtualKey, key.ScanCode, key.Extended, key.Down))
+        {
+            case KeyOutcome.Send send:
+                Send(send.Down ? new InputEvent.KeyDown(send.Scancode) : new InputEvent.KeyUp(send.Scancode));
+                return true;
+            case KeyOutcome.Hotkey hotkey:
+                // Fuori dall'hook: deve tornare subito a Windows.
+                DispatcherQueue.TryEnqueue(() => Perform(hotkey.Action));
+                return true;
+            default:
+                // Rilasci di tasti premuti prima della cattura: a Windows, che ne ha visto la pressione.
+                return key.Down;
+        }
+    }
+
+    private void OnActivated(object sender, WindowActivatedEventArgs args)
+    {
+        _active = args.WindowActivationState != WindowActivationState.Deactivated;
+        if (!_active)
+        {
+            ReleaseGuestInput();
+            return;
+        }
+        // Al ritorno nella finestra l'ospite prende lo stato dei blocchi dell'host.
+        var locks = KeyboardLocks.None;
+        if ((Native.GetKeyState(0x14) & 1) != 0) locks |= KeyboardLocks.CapsLock;
+        if ((Native.GetKeyState(0x90) & 1) != 0) locks |= KeyboardLocks.NumLock;
+        if ((Native.GetKeyState(0x91) & 1) != 0) locks |= KeyboardLocks.ScrollLock;
+        Send(new InputEvent.Locks(locks));
+    }
+
+    /// <summary>Solleva nell'ospite tasti e pulsanti premuti e libera il puntatore (niente tasti bloccati).</summary>
+    private void ReleaseGuestInput()
+    {
+        foreach (var code in _keyboard.ReleaseAll()) Send(new InputEvent.KeyUp(code));
+        _pointer.Release();
+    }
+
+    // MARK: comandi
+
+    private void OnSecureAttention(object sender, RoutedEventArgs e) => Perform(HotkeyAction.SecureAttention);
+
+    private void OnToggleFullscreen(object sender, RoutedEventArgs e) => Perform(HotkeyAction.ToggleFullscreen);
+
+    private void OnReleaseCursor(object sender, RoutedEventArgs e) => Perform(HotkeyAction.ReleaseCursor);
+
+    private void SetFullScreen(bool on)
+    {
+        AppWindow.SetPresenter(on ? AppWindowPresenterKind.FullScreen : AppWindowPresenterKind.Overlapped);
+        // A schermo intero solo la VM: il menu resta raggiungibile con le scorciatoie.
+        AppTitleBar.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void UpdatePointerMode()
+    {
+        var client = _session?.MouseMode == MouseModes.Client;
+        _cursor.SetMode(client, _pointer.IsLocked);
+        var hotkey = KeyboardState.HotkeyOf(_profile, HotkeyAction.ReleaseCursor).ToString();
+        AppTitleBar.Subtitle = !_screenVisible ? "" :
+            _released ? Strings.Format("SessionReleasedHint", hotkey) :
+            !client && !_pointer.IsLocked ? Strings.Format("SessionCaptureHint", hotkey) : "";
+    }
+
+    // MARK: display e cursore
 
     /// <summary>
     /// Applica gli eventi del canale display sul thread dell'interfaccia: tutti quelli in coda,
@@ -108,6 +252,7 @@ public sealed partial class SessionWindow : Window
                         break;
                     case DisplayEvent.PrimarySurfaceDestroyed:
                         _presenter?.ClearSurface();
+                        _cursor.Refresh();
                         present = true;
                         break;
                     case DisplayEvent.Update update:
@@ -126,12 +271,22 @@ public sealed partial class SessionWindow : Window
         }
     }
 
+    private async Task RunCursorAsync(SpiceSession session)
+    {
+        await foreach (var value in session.CursorEvents.ReadAllAsync())
+        {
+            _cursor.Apply(value);
+        }
+    }
+
     /// <summary>Con lo schermo della VM visibile le barre informative lasciano tutto lo spazio al display.</summary>
     private void ShowScreen(bool visible)
     {
         _screenVisible = visible;
         RendererInfo.Visibility = visible ? Visibility.Collapsed : Visibility.Visible; // anche il suo margine
         if (_session?.State.Kind == SessionStateKind.Connected) ProfileInfo.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+        if (visible) DisplayPanel.Focus(FocusState.Programmatic);
+        UpdatePointerMode();
     }
 
     private async Task RunSessionAsync(SpiceSession session)
@@ -147,8 +302,14 @@ public sealed partial class SessionWindow : Window
                     break;
                 case SessionEvent.ChannelsLinked linked:
                     AppLog.Info($"Sessione connessa: offerti {string.Join(", ", linked.Offered)}; collegati {string.Join(", ", linked.Linked)}");
-                    ProfileInfo.Message = Strings.Format("SessionConnectedDetail", string.Join(", ", linked.Linked.Prepend(new SpiceKit.Wire.ChannelEntry(1, 0))))
+                    ProfileInfo.Message = Strings.Format("SessionConnectedDetail", string.Join(", ", linked.Linked.Prepend(new ChannelEntry(1, 0))))
                                           + Details();
+                    SessionMenuButton.IsEnabled = session.HasInputs;
+                    break;
+                case SessionEvent.MouseModeChanged mode:
+                    AppLog.Info($"Modalità del puntatore: {mode.Mode}");
+                    if (mode.Mode == MouseModes.Client) _pointer.Release();
+                    UpdatePointerMode();
                     break;
                 case SessionEvent.GuestNameChanged name:
                     _guestName = name.Name;
@@ -198,6 +359,13 @@ public sealed partial class SessionWindow : Window
                     : failure.Message;
                 break;
         }
+        if (state.Kind == SessionStateKind.Disconnected)
+        {
+            // Sessione finita: mouse e tastiera tornano a Windows, anche a schermo intero.
+            SessionMenuButton.IsEnabled = false;
+            _pointer.Release();
+            if (AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen) SetFullScreen(false);
+        }
     }
 
     /// <summary>Riepilogo senza ticket né CA; l'host Proxmox (che contiene un ticket del proxy) non viene mostrato.</summary>
@@ -239,6 +407,7 @@ public sealed partial class SessionWindow : Window
         var height = DisplayPanel.ActualHeight;
         if (width < 1 || height < 1) return;
         _presenter.Resize(width, height, DisplayPanel.CompositionScaleX, DisplayPanel.CompositionScaleY);
+        _cursor.Refresh();
         // Lo schermo della VM, oppure (prima che arrivi) il nero dello sfondo.
         _presenter.Present();
     }

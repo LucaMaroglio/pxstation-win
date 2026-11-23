@@ -10,6 +10,18 @@ namespace WindowsSpiceClient.Display;
 /// <summary>Adattatore grafico in uso, mostrato nella finestra di diagnostica.</summary>
 public sealed record RendererInfo(string AdapterName, string FeatureLevel, bool IsSoftware);
 
+/// <summary>Adattamento dello schermo della VM al pannello: scala (DIP per pixel dell'ospite) e margini in DIP.</summary>
+public sealed record SurfaceFit(double Scale, double OffsetX, double OffsetY, int Width, int Height)
+{
+    /// <summary>Pixel dell'ospite sotto un punto del pannello (in DIP), limitato allo schermo.</summary>
+    public (uint X, uint Y) ToSurface(double x, double y) => (
+        (uint)Math.Clamp((int)Math.Floor((x - OffsetX) / Scale), 0, Width - 1),
+        (uint)Math.Clamp((int)Math.Floor((y - OffsetY) / Scale), 0, Height - 1));
+
+    /// <summary>Punto del pannello (in DIP) di un pixel dell'ospite.</summary>
+    public (double X, double Y) ToPanel(double x, double y) => (OffsetX + (x * Scale), OffsetY + (y * Scale));
+}
+
 /// <summary>Pixel letti da una texture (BGRA, righe compatte, dall'alto in basso).</summary>
 public sealed record SurfaceCapture(int Width, int Height, byte[] Bgra);
 
@@ -85,6 +97,12 @@ public sealed class D3D11Presenter : IDisposable
 
     /// <summary>Misura della superficie della VM, se c'è.</summary>
     public (int Width, int Height)? SurfaceSize { get; private set; }
+
+    /// <summary>Dove si trova lo schermo della VM nel pannello (in DIP), se c'è.</summary>
+    public SurfaceFit? Fit { get; private set; }
+
+    /// <summary>Scala di composizione del pannello (pixel fisici per DIP).</summary>
+    public float CompositionScale => _scaleX;
 
     /// <summary>Il pannello è cambiato (misura in DIP, scala di composizione).</summary>
     public void Resize(double widthDip, double heightDip, float scaleX, float scaleY)
@@ -252,12 +270,14 @@ public sealed class D3D11Presenter : IDisposable
         if (swapChain2 is null) return;
         if (SurfaceSize is not var (width, height))
         {
+            Fit = null;
             swapChain2.MatrixTransform = Matrix3x2.CreateScale(1 / _scaleX, 1 / _scaleY);
             return;
         }
         var fit = (float)Math.Min(_panelWidth / width, _panelHeight / height);
         var offsetX = (float)((_panelWidth - (width * fit)) / 2);
         var offsetY = (float)((_panelHeight - (height * fit)) / 2);
+        Fit = new SurfaceFit(fit, offsetX, offsetY, width, height);
         swapChain2.MatrixTransform = Matrix3x2.CreateScale(fit) * Matrix3x2.CreateTranslation(offsetX, offsetY);
     }
 

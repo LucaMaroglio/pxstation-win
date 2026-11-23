@@ -91,7 +91,9 @@ public partial class App : Application
 
     internal SessionWindow OpenSession(ConnectionProfile profile, ProxmoxVMRef? reference, string? vmName)
     {
-        var window = new SessionWindow(profile, reference, vmName);
+        // Schermo intero se lo chiede il .vv o le Preferenze (mai nell'autoverifica, che legge le finestre).
+        var fullScreen = !SelfTest.IsEnabled && (profile.Fullscreen || Settings.Load().OpenFullScreen);
+        var window = new SessionWindow(profile, reference, vmName, fullScreen);
         _sessions.Add(window);
         window.Closed += (_, _) => _sessions.Remove(window);
         window.Activate();

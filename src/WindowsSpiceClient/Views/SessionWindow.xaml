@@ -2,7 +2,8 @@
 <Window
     x:Class="WindowsSpiceClient.Views.SessionWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:display="using:WindowsSpiceClient.Display">
 
     <Grid x:Name="Root" Loaded="OnRootLoaded">
         <Grid.RowDefinitions>
@@ -16,6 +17,26 @@
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="ms-appx:///Assets/app-64.png" />
             </TitleBar.IconSource>
+            <TitleBar.RightHeader>
+                <!-- Comandi della sessione (M4): le scorciatoie mostrate sono quelle del .vv o le predefinite. -->
+                <Button x:Name="SessionMenuButton" x:Uid="SessionMenuButton" Margin="0,0,4,0" IsEnabled="False"
+                        Background="Transparent" BorderThickness="0">
+                    <FontIcon Glyph="&#xE765;" FontSize="16" />
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuFlyoutItem x:Name="SecureAttentionItem" x:Uid="SessionSendCtrlAltDel" Click="OnSecureAttention">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE72E;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem x:Name="FullscreenItem" x:Uid="SessionToggleFullscreen" Click="OnToggleFullscreen">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE740;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem x:Name="ReleaseCursorItem" x:Uid="SessionReleaseCursor" Click="OnReleaseCursor">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8B0;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </TitleBar.RightHeader>
         </TitleBar>
 
         <!-- Stato della connessione SPICE (M2); il riepilogo del profilo resta sotto il titolo. -->
@@ -26,9 +47,15 @@
             </InfoBar.Content>
         </InfoBar>
 
-        <!-- Schermo della VM (Direct3D 11): adattato al pannello mantenendo le proporzioni, bordi neri. -->
+        <!-- Schermo della VM (Direct3D 11): adattato al pannello mantenendo le proporzioni, bordi neri.
+             Sopra, il cursore dell'ospite in modalità server (in modalità client è il cursore di sistema). -->
         <Border Grid.Row="2" Background="Black">
-            <SwapChainPanel x:Name="DisplayPanel" />
+            <Grid>
+                <display:DisplaySurface x:Name="DisplayPanel" x:Uid="DisplayPanel" IsTabStop="True" />
+                <Canvas IsHitTestVisible="False">
+                    <Image x:Name="CursorOverlay" Visibility="Collapsed" Stretch="Fill" />
+                </Canvas>
+            </Grid>
         </Border>
 
         <InfoBar x:Name="RendererInfo" Grid.Row="3" Margin="12" IsOpen="True" IsClosable="True"

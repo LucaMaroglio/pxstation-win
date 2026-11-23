@@ -156,5 +156,14 @@ Il token API di questo server verrà eliminato da Gestione credenziali di Window
   <data name="SessionClosed" xml:space="preserve"><value>Sessione chiusa</value></data>
   <data name="SessionFailed" xml:space="preserve"><value>Connessione non riuscita</value></data>
   <data name="SessionEnded" xml:space="preserve"><value>Sessione terminata</value></data>
+  <data name="SessionMenuButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Comandi della sessione</value></data>
+  <data name="SessionMenuButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Comandi della sessione</value></data>
+  <data name="SessionSendCtrlAltDel.Text" xml:space="preserve"><value>Invia Ctrl+Alt+Canc</value></data>
+  <data name="SessionToggleFullscreen.Text" xml:space="preserve"><value>Schermo intero</value></data>
+  <data name="SessionReleaseCursor.Text" xml:space="preserve"><value>Rilascia mouse e tastiera</value></data>
+  <data name="DisplayPanel.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Schermo della macchina virtuale</value></data>
+  <data name="DisplayPanel.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Tasti e clic vanno alla macchina virtuale.</value></data>
+  <data name="SessionReleasedHint" xml:space="preserve"><value>Mouse e tastiera rilasciati: fai clic sullo schermo della VM per riprenderli ({0} per rilasciarli di nuovo).</value></data>
+  <data name="SessionCaptureHint" xml:space="preserve"><value>Fai clic sullo schermo della VM per catturare il mouse; {0} lo rilascia.</value></data>
   <data name="SessionNoTicketHint" xml:space="preserve"><value>Con Proxmox premi di nuovo «Connetti» (o SPICE nell'interfaccia web) per ottenere un file nuovo.</value></data>
 </root>
