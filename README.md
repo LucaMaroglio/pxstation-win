@@ -42,12 +42,12 @@ tools\build.ps1 -SelfTest    # + autoverifica di renderer e interfaccia
 tools\build.ps1 -Publish     # eseguibile autonomo in artifacts\win-x64
 tools\build.ps1 -Proxmox     # + prova contro il finto Proxmox (..\windows-spike, Python)
 tools\build.ps1 -Spice       # + prova SPICE contro QEMU per Windows (..\windows-spike, Python)
-tools\build.ps1 -Installer   # + installer in artifacts\installer (serve Inno Setup 6)
+tools\build.ps1 -Installer   # + installer in artifacts\installer (serve Inno Setup 7)
 ```
 
 ## Installer
 
-Serve **Inno Setup 6** (gratuito): scarica `innosetup-6.x.x.exe` da <https://jrsoftware.org/isdl.php>
+Serve **Inno Setup 7** (gratuito): scarica `innosetup-7.x.x.exe` da <https://jrsoftware.org/isdl.php>
 e installalo (va bene «Installa solo per me», con la lingua italiana inclusa). Poi
 `tools\build.ps1 -Installer` crea `artifacts\installer\WindowsSpiceClient-<versione>-x64-setup.exe`.
 

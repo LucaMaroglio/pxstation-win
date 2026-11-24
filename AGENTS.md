@@ -107,7 +107,7 @@ windows-spice-client/
 │                                di notifica e notifiche, alimentazione), Dialogs, WindowChrome
 ├── tests/SpiceKit.Tests/        xunit v3 (net10.0-windows: prova anche SpiceKit.Windows); Fixtures/ copiate
 │                                da macos-spice-client; TestHttpsServer; H264TestEncoder (codificatore di Windows)
-├── installer/                   WindowsSpiceClient.iss (Inno Setup 6; tools\build.ps1 -Installer) (M9)
+├── installer/                   WindowsSpiceClient.iss (Inno Setup 7; tools\build.ps1 -Installer) (M9)
 └── tools/                       build.ps1, selftest_proxmox.py, selftest_spice.py, make_icon.py, capture-window.ps1
 ```
 

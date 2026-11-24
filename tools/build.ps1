@@ -55,13 +55,13 @@ try {
     }
 
     if ($Installer) {
-        # Inno Setup 6: nel PATH o nelle cartelle d'installazione abituali (vedi README, «Installer»).
+        # Inno Setup 7: nel PATH o nelle cartelle d'installazione abituali (vedi README, «Installer»).
         $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
         if (-not $iscc) {
-            $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
-                "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+            $iscc = @("$env:ProgramFiles\Inno Setup 7\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 7\ISCC.exe",
+                "$env:LOCALAPPDATA\Programs\Inno Setup 7\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
         }
-        if (-not $iscc) { throw 'Inno Setup 6 non trovato (ISCC.exe): installalo da https://jrsoftware.org/isdl.php (vedi README).' }
+        if (-not $iscc) { throw 'Inno Setup 7 non trovato (ISCC.exe): installalo da https://jrsoftware.org/isdl.php (vedi README).' }
         $version = ([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Encoding UTF8)).Project.PropertyGroup.Version |
             Where-Object { $_ } | Select-Object -First 1
         Invoke-Step "Installer $version" {

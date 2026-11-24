@@ -1,4 +1,4 @@
-; Installer di Windows Spice Client (M9) per Inno Setup 6.
+; Installer di Windows Spice Client (M9) per Inno Setup 7.
 ;
 ; Si compila con tools\build.ps1 -Installer, che pubblica l'eseguibile autonomo e passa a ISCC:
 ;   /DAppVersion=0.1.0  /DSourceDir=<cartella di dotnet publish>  /DArch=x64|arm64
@@ -49,6 +49,8 @@ ArchitecturesInstallIn64BitMode=arm64
 #else
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Inno Setup 7: anche il programma d'installazione è a 64 bit.
+SetupArchitecture=x64
 #endif
 ChangesAssociations=yes
 CloseApplications=yes
