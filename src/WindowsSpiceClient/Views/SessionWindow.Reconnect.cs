@@ -55,9 +55,13 @@ public sealed partial class SessionWindow
         {
             Reconnections++;
             AppLog.Info($"Sessione riconnessa al tentativo {_attempt}");
+            Notify(Strings.Get("NotifyReconnectedTitle"), Strings.Format("NotifyReconnectedText", DisplayTitle));
         }
+        StopReconnecting(); // il tentativo è riuscito: niente più da annullare
         _connectedAt = Stopwatch.GetTimestamp();
         _cancelled = false;
+        _endKind = SessionEndKind.None;
+        _everConnected = true;
     }
 
     private void OnSessionEnded(SessionState state)
@@ -73,22 +77,23 @@ public sealed partial class SessionWindow
 
         if (_cancelled)
         {
-            End(state, Strings.Get("SessionReconnectCancelled"));
+            End(state, Strings.Get("SessionReconnectCancelled"), SessionEndKind.Cancelled);
             return;
         }
         if (failure is null || !ReconnectPolicy.ShouldReconnect(failure, wasConnected, reconnecting))
         {
-            End(state);
+            End(state, kind: failure is null ? SessionEndKind.None : SessionEndKind.Dropped);
             return;
         }
         if (!CanReconnect)
         {
-            End(state, Strings.Get(_reference is null ? "SessionOneTimeTicket" : "SessionNoApi"));
+            End(state, Strings.Get(_reference is null ? "SessionOneTimeTicket" : "SessionNoApi"),
+                _reference is null ? SessionEndKind.Dropped : SessionEndKind.NoApi);
             return;
         }
         if (!Controller.Settings.ReconnectAutomatically && !reconnecting)
         {
-            End(state); // resta il pulsante «Riconnetti»
+            _ = CheckVmThenEndAsync(state); // resta il pulsante «Riconnetti»
             return;
         }
         if (_attempt == 0) AppLog.Info($"Connessione persa ({failure.Message}): riconnessione");
@@ -96,14 +101,16 @@ public sealed partial class SessionWindow
     }
 
     /// <summary>Fine definitiva: stato finale, eventuale spiegazione e pulsante «Riconnetti» se ha senso.</summary>
-    private void End(SessionState state, string? note = null)
+    private void End(SessionState state, string? note = null, SessionEndKind kind = SessionEndKind.Dropped)
     {
         StopReconnecting();
         _attempt = 0;
+        _endKind = kind;
         _restoreIso = null; // nessuna riconnessione: niente da ricollegare
         _restoreCard = null;
         ShowState(state);
         if (note is not null) ProfileInfo.Message = string.IsNullOrEmpty(ProfileInfo.Message) ? note : $"{ProfileInfo.Message}\n{note}";
+        NotifyEnded();
     }
 
     private void ScheduleAttempt(string lastFailure)
@@ -120,6 +127,8 @@ public sealed partial class SessionWindow
         _retryAt = DateTime.UtcNow + delay;
         ShowReconnecting();
         _countdown = new DispatcherQueueTimerHolder(DispatcherQueue, TimeSpan.FromSeconds(1), ShowReconnecting);
+        RaiseStatusChanged();
+        if (_attempt == 1) Notify(Strings.Get("NotifyLostTitle"), Strings.Format("NotifyLostText", DisplayTitle));
         _ = WaitThenAttemptAsync(delay, lastFailure, cancel.Token);
     }
 
@@ -158,7 +167,7 @@ public sealed partial class SessionWindow
                 if (cancellationToken.IsCancellationRequested) return;
                 if (fetched is null)
                 {
-                    End(SessionState.Disconnected(new SessionFailure(Strings.Get("SessionVmOff"))));
+                    End(SessionState.Disconnected(new SessionFailure(Strings.Get("SessionVmOff"))), kind: SessionEndKind.VmNotRunning);
                     return;
                 }
                 next = VVFileParser.Parse(fetched).Profile;
@@ -214,15 +223,17 @@ public sealed partial class SessionWindow
             _ = _session.DisconnectAsync();
             return;
         }
-        End(SessionState.Disconnected(new SessionFailure(Strings.Get("SessionReconnectCancelled"))));
+        End(SessionState.Disconnected(new SessionFailure(Strings.Get("SessionReconnectCancelled"))), kind: SessionEndKind.Cancelled);
     }
 
     private void ReconnectNow()
     {
         StopReconnecting();
         _attempt = Math.Max(_attempt, 1);
+        _endKind = SessionEndKind.None;
         var cancel = new CancellationTokenSource();
         _reconnect = cancel;
+        RaiseStatusChanged();
         _ = AttemptAsync(ProfileInfo.Message ?? "", cancel.Token);
     }
 

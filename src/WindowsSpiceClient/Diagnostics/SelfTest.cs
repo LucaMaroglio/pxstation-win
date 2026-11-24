@@ -8,6 +8,7 @@ using SpiceKit.VVFile;
 using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 using WindowsSpiceClient.Services;
+using WindowsSpiceClient.Shell;
 using WindowsSpiceClient.Views;
 
 namespace WindowsSpiceClient.Diagnostics;
@@ -72,7 +73,9 @@ internal static class SelfTest
         var welcome = app.ShowWelcome();
         await SettleAsync(welcome.RootElement, 800);
         lines.Add(await CaptureAsync(welcome.RootElement, directory, "welcome.png"));
+        lines.Add(AccessibilityResult(welcome.RootElement, "benvenuto"));
         welcome.Close();
+        lines.AddRange(ShellResults(app));
 
         ProxmoxServer? server = null;
         if (AppPaths.IsIsolated)
@@ -98,6 +101,7 @@ internal static class SelfTest
                 : $"vm ({section.Title}): {string.Join(", ", section.Rows.Select(r => $"{r.Name}={r.Vm.Status}"))}");
         }
         lines.Add(await CaptureAsync(vmList.RootElement, directory, "vmlist.png"));
+        lines.Add(AccessibilityResult(vmList.RootElement, "macchine virtuali"));
 
         // Connessione end-to-end (solo con un server vero/finto con almeno una VM accesa).
         var running = vmList.SectionModels.SelectMany(s => s.Rows).FirstOrDefault(r => r.Vm.IsRunning);
@@ -116,6 +120,8 @@ internal static class SelfTest
                     {
                         lines.Add(await ScreenResultAsync(opened, directory, running.Name));
                         lines.Add(await ReconnectResultAsync(opened, running.Name, expectReconnect: true));
+                        lines.Add(NotificationsResult(app, running.Name));
+                        lines.Add(SessionTrayResult(opened, running.Name, expectPower: true));
                     }
                     opened.Close();
                 }
@@ -130,9 +136,11 @@ internal static class SelfTest
         var preferences = app.ShowPreferences();
         await SettleAsync(preferences.RootElement, 800);
         lines.Add(await CaptureAsync(preferences.RootElement, directory, "preferences-general.png"));
+        lines.Add(AccessibilityResult(preferences.RootElement, "preferenze generali"));
         preferences.ShowPage(PreferencesPage.Proxmox);
         await SettleAsync(preferences.RootElement, 600);
         lines.Add(await CaptureAsync(preferences.RootElement, directory, "preferences-proxmox.png"));
+        lines.Add(AccessibilityResult(preferences.RootElement, "preferenze proxmox"));
         preferences.Close();
 
         // File .vv da provare (tools/selftest_spice.py: QEMU in chiaro, TLS via proxy, ticket sbagliato).
@@ -149,6 +157,11 @@ internal static class SelfTest
                 else if (name.Contains("audio", StringComparison.Ordinal)) lines.Add(await AudioResultAsync(window, name));
                 else if (name == "usb") lines.AddRange(await DevicesResultAsync(window, directory, name));
                 else lines.Add(await InputResultAsync(window, directory, name));
+                if (name == "in-chiaro")
+                {
+                    lines.Add(SessionTrayResult(window, name, expectPower: false));
+                    lines.Add(AccessibilityResult(window.RootElement, "sessione"));
+                }
                 // Ticket monouso senza server Proxmox configurato: niente riconnessione, ma la spiegazione.
                 if (name == "in-chiaro") lines.Add(await ReconnectResultAsync(window, name, expectReconnect: false));
             }
@@ -316,6 +329,81 @@ internal static class SelfTest
         var ok = window.Reconnections > 0 && window.SessionState?.Kind == SpiceKit.Session.SessionStateKind.Connected && window.ScreenUpdates > updates;
         return string.Create(CultureInfo.InvariantCulture,
             $"riconnessione {name}: {(ok ? "OK" : "ERRORE")} {window.Reconnections} riconnessioni, {window.ScreenUpdates - updates} aggiornamenti dopo · {window.StatusText.Replace('\n', ' ')}");
+    }
+
+    /// <summary>
+    /// Notifiche (M9) dopo la riconnessione: «Connessione persa» e «Riconnessa», come il client Linux
+    /// (registrate soltanto: l'autoverifica non mostra notifiche vere).
+    /// </summary>
+    private static string NotificationsResult(App app, string name)
+    {
+        var history = app.Controller.Notifier.History;
+        var ok = history.Any(h => h.StartsWith(Strings.Get("NotifyLostTitle"), StringComparison.Ordinal))
+                 && history.Any(h => h.StartsWith(Strings.Get("NotifyReconnectedTitle"), StringComparison.Ordinal));
+        return $"notifiche {name}: {(ok ? "OK" : "ERRORE")} {string.Join(" | ", history)}";
+    }
+
+    private static readonly string[] TrayCommands = ["TrayVmList", "TrayOpenFile", "TrayPreferences", "TrayQuit"];
+
+    /// <summary>Area di notifica e jump list (M9): icona accettata dalla shell, voci del menu, attività.</summary>
+    private static string[] ShellResults(App app)
+    {
+        var menu = MenuEntry.Describe(app.TrayEntries()).ToList();
+        var expected = TrayCommands.Select(Strings.Get).ToList();
+        var trayOk = app.Tray?.IsShown == true && expected.All(menu.Contains) && app.TrayTooltip() == AppPaths.AppName;
+        var request = CommandLine.Parse($"\"{AppPaths.ExecutablePath}\" {CommandLine.Preferences}");
+        var tasks = JumpList.Tasks;
+        var jumpOk = tasks.Count == 3 && request.Command == CommandLine.Preferences && request.Files.Count == 0;
+        return
+        [
+            $"area di notifica: {(trayOk ? "OK" : "ERRORE")} icona {(app.Tray?.IsShown == true ? "mostrata" : "assente")} · {string.Join(" / ", menu)}",
+            $"jump list: {(jumpOk ? "OK" : "ERRORE")} {string.Join(", ", tasks.Select(t => $"{t.Title} ({t.Command})"))}",
+        ];
+    }
+
+    /// <summary>Menu della sessione nell'icona: stato breve, comandi e alimentazione (sessioni Proxmox).</summary>
+    private static string SessionTrayResult(SessionWindow window, string name, bool expectPower)
+    {
+        var lines = MenuEntry.Describe([window.TrayEntry()]).ToList();
+        var power = lines.Any(l => l.Contains(Strings.Get("TrayPower"), StringComparison.Ordinal));
+        var ok = lines.Count > 0 && lines[0].EndsWith(Strings.Get("StateConnected"), StringComparison.Ordinal) && power == expectPower
+                 && lines.Any(l => l.EndsWith(Strings.Get("TrayDisconnect"), StringComparison.Ordinal));
+        return $"menu sessione {name}: {(ok ? "OK" : "ERRORE")} {string.Join(" / ", lines)}";
+    }
+
+    /// <summary>
+    /// Accessibilità (M9): ogni controllo interattivo deve avere un nome per l'assistente vocale
+    /// (testo, <c>AutomationProperties.Name</c> o etichetta). Elenca quelli senza.
+    /// </summary>
+    private static string AccessibilityResult(UIElement root, string name)
+    {
+        var missing = new List<string>();
+        var count = 0;
+        Walk(root);
+        return missing.Count == 0
+            ? $"accessibilità {name}: OK {count} controlli con nome"
+            : $"accessibilità {name}: ERRORE senza nome: {string.Join(", ", missing)}";
+
+        void Walk(DependencyObject element)
+        {
+            if (element is Microsoft.UI.Xaml.Controls.Control { IsTabStop: true } control
+                && element is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase or Microsoft.UI.Xaml.Controls.ToggleSwitch
+                    or Microsoft.UI.Xaml.Controls.TextBox or Microsoft.UI.Xaml.Controls.PasswordBox
+                    or Microsoft.UI.Xaml.Controls.ComboBox or Microsoft.UI.Xaml.Controls.ListView)
+            {
+                if (control.Visibility == Visibility.Visible)
+                {
+                    count++;
+                    var peer = Microsoft.UI.Xaml.Automation.Peers.FrameworkElementAutomationPeer.CreatePeerForElement(control);
+                    if (string.IsNullOrWhiteSpace(peer?.GetName()))
+                    {
+                        missing.Add(string.IsNullOrEmpty(control.Name) ? control.GetType().Name : control.Name);
+                    }
+                }
+            }
+            var children = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(element);
+            for (var i = 0; i < children; i++) Walk(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(element, i));
+        }
     }
 
     /// <summary>

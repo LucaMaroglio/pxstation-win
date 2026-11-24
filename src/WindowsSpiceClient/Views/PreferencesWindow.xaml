@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Window
     x:Class="WindowsSpiceClient.Views.PreferencesWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -61,10 +61,10 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock x:Uid="ReconnectTitle" TextWrapping="Wrap" />
+                                <TextBlock x:Name="ReconnectTitleText" x:Uid="ReconnectTitle" TextWrapping="Wrap" />
                                 <TextBlock x:Uid="ReconnectNote" Style="{StaticResource NoteStyle}" />
                             </StackPanel>
-                            <ToggleSwitch x:Name="ReconnectSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
+                            <ToggleSwitch x:Name="ReconnectSwitch" AutomationProperties.LabeledBy="{Binding ElementName=ReconnectTitleText}" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
                                           Toggled="OnSettingToggled" />
                         </Grid>
 
@@ -75,10 +75,10 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock x:Uid="FullScreenTitle" TextWrapping="Wrap" />
+                                <TextBlock x:Name="FullScreenTitleText" x:Uid="FullScreenTitle" TextWrapping="Wrap" />
                                 <TextBlock x:Uid="FullScreenNote" Style="{StaticResource NoteStyle}" />
                             </StackPanel>
-                            <ToggleSwitch x:Name="FullScreenSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
+                            <ToggleSwitch x:Name="FullScreenSwitch" AutomationProperties.LabeledBy="{Binding ElementName=FullScreenTitleText}" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
                                           Toggled="OnSettingToggled" />
                         </Grid>
 
@@ -89,10 +89,10 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock x:Uid="TrayTitle" TextWrapping="Wrap" />
+                                <TextBlock x:Name="TrayTitleText" x:Uid="TrayTitle" TextWrapping="Wrap" />
                                 <TextBlock x:Uid="TrayNote" Style="{StaticResource NoteStyle}" />
                             </StackPanel>
-                            <ToggleSwitch x:Name="TraySwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
+                            <ToggleSwitch x:Name="TraySwitch" AutomationProperties.LabeledBy="{Binding ElementName=TrayTitleText}" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
                                           Toggled="OnSettingToggled" />
                         </Grid>
                         <Grid Style="{StaticResource CardStyle}">
@@ -100,8 +100,8 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Uid="NotificationsTitle" TextWrapping="Wrap" VerticalAlignment="Center" />
-                            <ToggleSwitch x:Name="NotificationsSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
+                            <TextBlock x:Name="NotificationsTitleText" x:Uid="NotificationsTitle" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <ToggleSwitch x:Name="NotificationsSwitch" AutomationProperties.LabeledBy="{Binding ElementName=NotificationsTitleText}" Grid.Column="1" OnContent="" OffContent="" MinWidth="0"
                                           Toggled="OnSettingToggled" />
                         </Grid>
 

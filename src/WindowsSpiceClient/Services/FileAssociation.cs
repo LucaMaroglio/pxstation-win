@@ -9,7 +9,7 @@ namespace WindowsSpiceClient.Services;
 /// <remarks>
 /// Windows protegge la scelta del programma predefinito (UserChoice): un programma può
 /// registrarsi come candidato, ma è l'utente a sceglierlo nella finestra "Apri con".
-/// L'installer (M9) farà la stessa registrazione.
+/// L'installer (installer\WindowsSpiceClient.iss) fa la stessa registrazione.
 /// </remarks>
 internal static partial class FileAssociation
 {

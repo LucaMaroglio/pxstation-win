@@ -201,4 +201,38 @@ Il token API di questo server verrà eliminato da Gestione credenziali di Window
   <data name="SmartcardRemoved" xml:space="preserve"><value>La smartcard è tornata a Windows.</value></data>
   <data name="SmartcardFailed" xml:space="preserve"><value>Impossibile condividere la smartcard: {0}</value></data>
   <data name="SessionNoTicketHint" xml:space="preserve"><value>Con Proxmox premi di nuovo «Connetti» (o SPICE nell'interfaccia web) per ottenere un file nuovo.</value></data>
+<!-- M9: area di notifica, notifiche, jump list -->
+  <data name="TraySessions" xml:space="preserve"><value>Sessioni</value></data>
+  <data name="TrayShowWindow" xml:space="preserve"><value>Mostra la finestra</value></data>
+  <data name="TrayVmList" xml:space="preserve"><value>Macchine virtuali…</value></data>
+  <data name="TrayOpenFile" xml:space="preserve"><value>Apri file di connessione…</value></data>
+  <data name="TrayPreferences" xml:space="preserve"><value>Preferenze…</value></data>
+  <data name="TrayQuit" xml:space="preserve"><value>Esci</value></data>
+  <data name="TrayTooltipActive" xml:space="preserve"><value>{0} — sessioni attive: {1}</value></data>
+  <data name="TrayRetryNow" xml:space="preserve"><value>Riprova ora</value></data>
+  <data name="TrayCancelReconnect" xml:space="preserve"><value>Annulla riconnessione</value></data>
+  <data name="TrayPower" xml:space="preserve"><value>Alimentazione</value></data>
+  <data name="TraySetupProxmox" xml:space="preserve"><value>Configura accesso Proxmox…</value></data>
+  <data name="TrayDisconnect" xml:space="preserve"><value>Disconnetti</value></data>
+  <data name="TrayRemove" xml:space="preserve"><value>Rimuovi dall’elenco</value></data>
+  <data name="TrayEntry" xml:space="preserve"><value>{0} — {1}</value></data>
+  <data name="StateConnecting" xml:space="preserve"><value>connessione…</value></data>
+  <data name="StateConnected" xml:space="preserve"><value>connessa</value></data>
+  <data name="StateReconnecting" xml:space="preserve"><value>riconnessione {0}/{1}</value></data>
+  <data name="StateEnded" xml:space="preserve"><value>terminata</value></data>
+  <data name="ActionStartReconnect" xml:space="preserve"><value>Avvia e riconnetti</value></data>
+  <data name="SessionStartingVm" xml:space="preserve"><value>Avvio della macchina virtuale…</value></data>
+  <data name="SessionLostConnection" xml:space="preserve"><value>Connessione persa.</value></data>
+  <data name="PowerFailedTitle" xml:space="preserve"><value>{0}: alimentazione</value></data>
+  <data name="NotifyLostTitle" xml:space="preserve"><value>Connessione persa</value></data>
+  <data name="NotifyLostText" xml:space="preserve"><value>Riconnessione a {0} in corso…</value></data>
+  <data name="NotifyReconnectedTitle" xml:space="preserve"><value>Riconnessa</value></data>
+  <data name="NotifyReconnectedText" xml:space="preserve"><value>La sessione con {0} è di nuovo attiva.</value></data>
+  <data name="NotifyEndedTitle" xml:space="preserve"><value>{0}: sessione terminata</value></data>
+  <data name="QuitTitle" xml:space="preserve"><value>Uscire da Windows Spice Client?</value></data>
+  <data name="QuitText" xml:space="preserve"><value>Le sessioni aperte ({0}) verranno disconnesse.</value></data>
+  <data name="QuitAccept" xml:space="preserve"><value>Esci</value></data>
+  <data name="JumpVmList" xml:space="preserve"><value>Macchine virtuali</value></data>
+  <data name="JumpOpenFile" xml:space="preserve"><value>Apri file di connessione…</value></data>
+  <data name="JumpPreferences" xml:space="preserve"><value>Preferenze</value></data>
 </root>

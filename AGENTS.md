@@ -95,21 +95,33 @@ windows-spice-client/
 │       ├── Input/               KeyboardHook (WH_KEYBOARD_LL), PointerInput (client/server, cattura),
 │       │                        GuestCursor + CursorFactory (HCURSOR → InputCursor), Native (M4)
 │       ├── Diagnostics/         AppLog, SelfTest
-│       ├── Shell/               SingleInstance (AppInstance; Main in Program.cs) (M2)
+│       ├── Shell/               SingleInstance (AppInstance; Main in Program.cs) (M2); TrayIcon
+│       │                        (Shell_NotifyIcon + menu Win32), MenuEntry, Notifier (AppNotificationManager),
+│       │                        JumpList (ICustomDestinationList), CommandLine (M9)
 │       ├── Services/            AppController, ServerStore, Settings, CredentialStore,
 │       │                        FileAssociation, VmListLoader, Strings, JsonFiles, ClipboardBridge (M6)
 │       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
 │       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session (+ .Agent: risoluzione e
 │                                copia di file; + .Reconnect: riconnessione nella stessa finestra; + .Audio:
-│                                microfono; + .Devices: ISO e smartcard), Dialogs, WindowChrome
+│                                microfono; + .Devices: ISO e smartcard; + .Shell: stato e azioni per area
+│                                di notifica e notifiche, alimentazione), Dialogs, WindowChrome
 ├── tests/SpiceKit.Tests/        xunit v3 (net10.0-windows: prova anche SpiceKit.Windows); Fixtures/ copiate
 │                                da macos-spice-client; TestHttpsServer; H264TestEncoder (codificatore di Windows)
-└── tools/                       build.ps1, selftest_proxmox.py, make_icon.py, capture-window.ps1
+├── installer/                   WindowsSpiceClient.iss (Inno Setup 6; tools\build.ps1 -Installer) (M9)
+└── tools/                       build.ps1, selftest_proxmox.py, selftest_spice.py, make_icon.py, capture-window.ps1
 ```
 
-Cartelle previste nelle prossime milestone (vedi PIANO.md §2): in `SpiceKit.Windows` UsbDk (USB
-reale, serve il driver) e, nell'app, in `Shell/` area di notifica e notifiche. Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche
-righe di P/Invoke e servono solo all'interfaccia.
+Cartelle previste (vedi PIANO.md §2): in `SpiceKit.Windows` UsbDk (USB reale, serve il driver).
+Gestione credenziali è rimasta nell'app (`Services/CredentialStore`): sono poche righe di P/Invoke e
+servono solo all'interfaccia. L'area di notifica usa `Shell_NotifyIcon` direttamente invece di
+H.NotifyIcon (approvato ma non necessario): menu Win32 nativo, nessuna dipendenza in più.
+
+Integrazione con Windows (M9): AppUserModelID `org.windowsspiceclient.WindowsSpiceClient`
+(`AppPaths.AppId`), lo stesso nel processo (Program.cs), nel collegamento dell'installer, nella jump list
+e nella registrazione delle notifiche. Con l'icona nell'area di notifica attiva l'app resta aperta senza
+finestre (`DispatcherShutdownMode.OnExplicitShutdown`, uscita in `App.ExitWhenIdle`). Autoverifica e
+configurazioni isolate (`WSC_DATA_DIR`) non registrano notifiche né jump list: le notifiche finiscono
+solo in `Notifier.History`. La disinstallazione esegue `WindowsSpiceClient.exe --unregister`.
 
 Dati dell'app: `%APPDATA%\WindowsSpiceClient\` (`settings.json`, `servers.json`,
 `cluster-cas.json`, stessi nomi e campi del client Linux); segreti dei token in Gestione
@@ -263,4 +275,4 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 | M6 – agente (risoluzione dinamica, appunti testo/PNG, copia di file trascinandoli), riconnessione nella stessa finestra | ✅ 23/11/2026 (riconnessione provata col finto Proxmox; agente provato con server finto, da verificare su VM con spice-vdagent; più schermi: solo il primo) |
 | M7 – audio: riproduzione PCM e Opus (Concentus) con buffer anti-jitter, microfono PCM a richiesta, WASAPI | ✅ 24/11/2026 (flusso Opus provato contro QEMU con un tono a 440 Hz; uscita e microfono da verificare su un PC con scheda audio) |
 | M8 – usbredir, ISO come CD-ROM USB, canale smartcard, lettore CCID virtuale, smartcard con WinSCard | ✅ 24/11/2026 (avvio da ISO provato contro QEMU; USB reale con UsbDk non fatto: serve il driver installato e un dispositivo da provare) |
-| M9 | vedi PIANO.md §4 |
+| M9 – area di notifica, notifiche, jump list, installer Inno Setup, accessibilità | ✅ 24/11/2026 (menu e notifiche provati nell'autoverifica; installer scritto ma da compilare con Inno Setup; notifiche vere e menu a schermo da provare a mano) |

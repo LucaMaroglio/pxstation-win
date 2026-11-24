@@ -427,6 +427,7 @@ public sealed partial class SessionWindow : Window
             if (AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen) SetFullScreen(false);
         }
         UpdateReconnectButton();
+        RaiseStatusChanged();
     }
 
     /// <summary>Riepilogo senza ticket né CA; l'host Proxmox (che contiene un ticket del proxy) non viene mostrato.</summary>

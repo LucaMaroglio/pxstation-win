@@ -9,13 +9,15 @@
   tools\build.ps1 -Publish         # + eseguibile autonomo Release in artifacts\win-x64
   tools\build.ps1 -Proxmox         # autoverifica contro il finto Proxmox di ..\windows-spike
   tools\build.ps1 -Spice           # autoverifica SPICE contro QEMU (in chiaro, TLS via proxy, ticket errato)
+  tools\build.ps1 -Installer       # + installer Inno Setup in artifacts\installer (implica -Publish)
 #>
 param(
     [ValidateSet('Debug', 'Release')] [string] $Configuration = 'Debug',
     [switch] $SelfTest,
     [switch] $Publish,
     [switch] $Proxmox,
-    [switch] $Spice
+    [switch] $Spice,
+    [switch] $Installer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,6 +43,8 @@ try {
 
     $exe = Join-Path $root "src\WindowsSpiceClient\bin\x64\$Configuration\net10.0-windows10.0.19041.0\win-x64\WindowsSpiceClient.exe"
 
+    if ($Installer) { $Publish = $true }
+
     if ($Publish) {
         $out = Join-Path $root 'artifacts\win-x64'
         Invoke-Step 'Publish' {
@@ -48,6 +52,22 @@ try {
         }
         $exe = Join-Path $out 'WindowsSpiceClient.exe'
         Write-Host "Eseguibile: $exe"
+    }
+
+    if ($Installer) {
+        # Inno Setup 6: nel PATH o nelle cartelle d'installazione abituali (vedi README, «Installer»).
+        $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+        if (-not $iscc) {
+            $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+                "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+        }
+        if (-not $iscc) { throw 'Inno Setup 6 non trovato (ISCC.exe): installalo da https://jrsoftware.org/isdl.php (vedi README).' }
+        $version = ([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Encoding UTF8)).Project.PropertyGroup.Version |
+            Where-Object { $_ } | Select-Object -First 1
+        Invoke-Step "Installer $version" {
+            & $iscc /Q "/DAppVersion=$version" '/DArch=x64' "/DSourceDir=$out" (Join-Path $root 'installer\WindowsSpiceClient.iss')
+        }
+        Write-Host "Installer: $(Join-Path $root "artifacts\installer\WindowsSpiceClient-$version-x64-setup.exe")"
     }
 
     function Test-Report([string] $report, [string[]] $required) {
@@ -74,7 +94,8 @@ try {
         finally {
             Remove-Item Env:WSC_DATA_DIR
         }
-        Test-Report $report @('^risorse: OK', '^direct3d: OK', 'errore mostrato')
+        Test-Report $report @('^risorse: OK', '^direct3d: OK', 'errore mostrato', '^area di notifica: OK icona mostrata', '^jump list: OK',
+            '^accessibilità benvenuto: OK', '^accessibilità preferenze generali: OK')
     }
 
     function Get-Python {
@@ -90,7 +111,7 @@ try {
         $python = Get-Python
         Invoke-Step "Autoverifica con il finto Proxmox ($exe)" { & $python (Join-Path $PSScriptRoot 'selftest_proxmox.py') $exe $report }
         Test-Report $report @('^risorse: OK', '^direct3d: OK', '=paused', '^connessione .*: OK', '^spice .*: connessa',
-            '^riconnessione debian-test: OK')
+            '^riconnessione debian-test: OK', '^notifiche debian-test: OK', '^menu sessione debian-test: OK')
     }
 
     if ($Spice) {
@@ -101,6 +122,7 @@ try {
         Test-Report $report @('^direct3d: OK', '^spice in-chiaro: connessa', '^spice proxmox-tls: connessa',
             '^schermo in-chiaro: OK', '^schermo proxmox-tls: OK',
             '^input in-chiaro: OK puntatore Server', '^input proxmox-tls: OK', '^video video: OK', '^audio audio: OK .*tono ~4[34][0-9] Hz', '^iso usb: OK', '^smartcard usb: OK', '^riconnessione in-chiaro: OK nessun tentativo',
+            '^menu sessione in-chiaro: OK', '^accessibilità sessione: OK',
             '^spice ticket-errato: non riuscita \(ticket\)', '^spice senza server: non riuscita')
     }
 

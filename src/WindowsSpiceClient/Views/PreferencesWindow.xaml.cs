@@ -76,6 +76,7 @@ public sealed partial class PreferencesWindow : Window
         {
             AppLog.Error("Salvataggio delle impostazioni non riuscito", error);
         }
+        _app.UpdateTray();
     }
 
     private void UpdateAssociation()

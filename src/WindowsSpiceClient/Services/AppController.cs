@@ -14,6 +14,7 @@ internal sealed class AppController(App app)
 {
     public Settings Settings { get; } = Settings.Load();
     public ServerStore Store { get; } = new();
+    public Shell.Notifier Notifier { get; } = new(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
 
     // MARK: File di connessione
 

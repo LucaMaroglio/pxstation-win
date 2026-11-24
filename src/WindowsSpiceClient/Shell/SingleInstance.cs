@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
@@ -68,24 +67,11 @@ internal static partial class SingleInstance
             var commandLine = arguments.Kind == ExtendedActivationKind.Launch && arguments.Data is ILaunchActivatedEventArgs launch
                 ? launch.Arguments
                 : string.Empty;
-            var files = VvFiles(commandLine);
-            AppLog.Info($"Attivazione da un'altra istanza: {files.Count} file .vv");
-            dispatcher.TryEnqueue(async () =>
-            {
-                var opened = false;
-                foreach (var file in files) opened |= await app.Controller.OpenPathAsync(file, owner: null);
-                if (!opened) app.Activate();
-            });
+            var request = CommandLine.Parse(commandLine);
+            AppLog.Info($"Attivazione da un'altra istanza: {request.Files.Count} file .vv, comando {request.Command ?? "nessuno"}");
+            dispatcher.TryEnqueue(async () => await app.HandleAsync(request));
         };
     }
-
-    /// <summary>File <c>.vv</c> esistenti nella riga di comando (con o senza virgolette).</summary>
-    internal static List<string> VvFiles(string commandLine) =>
-        [.. Tokens().Matches(commandLine).Select(m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value)
-            .Where(a => a.EndsWith(FileAssociation.Extension, StringComparison.OrdinalIgnoreCase) && File.Exists(a))];
-
-    [GeneratedRegex("\"([^\"]*)\"|(\\S+)")]
-    private static partial Regex Tokens();
 
     [LibraryImport("user32.dll")]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

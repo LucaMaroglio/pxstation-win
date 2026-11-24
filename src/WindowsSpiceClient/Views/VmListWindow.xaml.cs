@@ -97,7 +97,7 @@ public sealed partial class VmListWindow : Window
 
     private async void OnAbout(object sender, RoutedEventArgs e) => await Dialogs.AboutAsync(Root.XamlRoot);
 
-    private void OnQuit(object sender, RoutedEventArgs e) => _app.Quit();
+    private async void OnQuit(object sender, RoutedEventArgs e) => await _app.QuitAsync();
 
     // MARK: Righe
 
