@@ -37,6 +37,7 @@ public sealed partial class PreferencesWindow : Window
         FullScreenSwitch.IsOn = settings.OpenFullScreen;
         TraySwitch.IsOn = settings.ShowTrayIcon;
         NotificationsSwitch.IsOn = settings.Notifications;
+        LoadLanguages(settings);
         _loading = false;
 
         UpdateAssociation();
@@ -60,6 +61,32 @@ public sealed partial class PreferencesWindow : Window
 
     // MARK: Generale
 
+    /// <summary>"Predefinita di sistema (…)" seguita dalle lingue supportate, ognuna nella sua lingua.</summary>
+    private void LoadLanguages(Settings settings)
+    {
+        var system = Language.DisplayName(Language.SystemLanguage());
+        LanguageBox.Items.Add(new ComboBoxItem { Content = Strings.Format("LanguageSystemDefault", system), Tag = "" });
+        foreach (var tag in Language.Supported)
+        {
+            LanguageBox.Items.Add(new ComboBoxItem { Content = Language.DisplayName(tag), Tag = tag });
+        }
+        var chosen = Language.Match(settings.Language) ?? "";
+        LanguageBox.SelectedItem = LanguageBox.Items.OfType<ComboBoxItem>().First(item => (string)item.Tag == chosen);
+        UpdateLanguageNote(chosen);
+    }
+
+    /// <summary>Come su macOS e Linux: la nota avvisa del riavvio solo se la scelta è cambiata.</summary>
+    private void UpdateLanguageNote(string chosen) =>
+        LanguageNoteText.Text = Strings.Get(chosen == Language.ChosenAtStart ? "LanguageSystemNote" : "LanguageRestartNote");
+
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || LanguageBox.SelectedItem is not ComboBoxItem { Tag: string chosen }) return;
+        _app.Controller.Settings.Language = chosen;
+        UpdateLanguageNote(chosen);
+        SaveSettings();
+    }
+
     private void OnSettingToggled(object sender, RoutedEventArgs e)
     {
         if (_loading) return;
@@ -68,6 +95,13 @@ public sealed partial class PreferencesWindow : Window
         settings.OpenFullScreen = FullScreenSwitch.IsOn;
         settings.ShowTrayIcon = TraySwitch.IsOn;
         settings.Notifications = NotificationsSwitch.IsOn;
+        SaveSettings();
+        _app.UpdateTray();
+    }
+
+    private void SaveSettings()
+    {
+        var settings = _app.Controller.Settings;
         try
         {
             settings.Save();
@@ -76,7 +110,6 @@ public sealed partial class PreferencesWindow : Window
         {
             AppLog.Error("Salvataggio delle impostazioni non riuscito", error);
         }
-        _app.UpdateTray();
     }
 
     private void UpdateAssociation()

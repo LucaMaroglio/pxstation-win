@@ -10,6 +10,9 @@ internal sealed class Settings
     public bool ShowTrayIcon { get; set; } = true;
     public bool Notifications { get; set; } = true;
 
+    /// <summary>Lingua dell'interfaccia ("en-US", "it-IT"); vuota = predefinita di sistema. Vedi <see cref="Services.Language"/>.</summary>
+    public string Language { get; set; } = "";
+
     public static Settings Load() => JsonFiles.Load(FileName, AppJsonContext.Default.Settings, () => new Settings());
 
     public void Save() => JsonFiles.Save(FileName, this, AppJsonContext.Default.Settings);

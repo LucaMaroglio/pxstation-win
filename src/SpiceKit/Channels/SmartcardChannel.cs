@@ -57,7 +57,7 @@ public abstract record SmartcardEvent
 /// </remarks>
 public sealed class SmartcardChannel(ChannelConnection connection, ChannelWriter<SmartcardEvent> events)
 {
-    internal const string ReaderName = "Windows Spice Client Smartcard Reader";
+    internal const string ReaderName = "PxStation Windows Smartcard Reader";
 
     private readonly Lock _gate = new();
     private uint? _readerId;

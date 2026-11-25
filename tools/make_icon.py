@@ -1,4 +1,4 @@
-"""Crea src/WindowsSpiceClient/Assets/app.ico dai PNG dell'icona della versione Linux.
+"""Crea src/WindowsSpiceClient/Assets/app.ico dai PNG del logo PxStation (icone di ../pxstation-linux).
 
 Il formato ICO ammette voci PNG (Windows Vista e successivi): ogni dimensione è copiata
 così com'è, senza ricampionare. 256 è la dimensione massima di una voce ICO.
@@ -13,7 +13,7 @@ import struct
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-SOURCE = os.path.join(ROOT, "..", "linux-spice-client", "data", "icons", "hicolor")
+SOURCE = os.path.join(ROOT, "..", "pxstation-linux", "data", "icons", "hicolor")
 TARGET = os.path.join(ROOT, "src", "WindowsSpiceClient", "Assets", "app.ico")
 SIZES = (16, 32, 64, 128, 256)
 
@@ -27,7 +27,7 @@ def png_size(data: bytes) -> tuple[int, int]:
 def main():
     images = []
     for size in SIZES:
-        path = os.path.join(SOURCE, f"{size}x{size}", "apps", "linux-spice-client.png")
+        path = os.path.join(SOURCE, f"{size}x{size}", "apps", "pxstation-linux.png")
         with open(path, "rb") as handle:
             data = handle.read()
         if png_size(data) != (size, size):

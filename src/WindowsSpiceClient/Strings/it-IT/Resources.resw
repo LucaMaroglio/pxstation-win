@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
-  Testi dell'interfaccia. Quelli condivisi con il client Linux vengono da
+  Testi italiani dell'interfaccia (la lingua di riserva è l'inglese, in Strings\en-US;
+  ogni chiave deve esistere in entrambi i file). Quelli condivisi con il client Linux vengono da
   linux_spice_client/core/texts.py (adattati a Windows: Gestione credenziali al posto del
   portachiavi, area di notifica, nessun remote-viewer).
   Chiavi "Nome.Proprietà": usate da x:Uid nello XAML. Chiavi semplici: usate da Strings.Get.
@@ -54,8 +55,6 @@
   <!-- Informazioni -->
   <data name="AboutTitle" xml:space="preserve"><value>Informazioni</value></data>
   <data name="AboutVersion" xml:space="preserve"><value>Versione {0}</value></data>
-  <data name="About" xml:space="preserve"><value>Macchine virtuali Proxmox VE su Windows, con il protocollo SPICE implementato in C# e lo schermo disegnato con Direct3D.</value></data>
-  <data name="Credits" xml:space="preserve"><value>Basato su MacOS Spice Client di Paweł Więcaszek e su Linux Spice Client (licenza MIT).</value></data>
 
   <!-- Benvenuto -->
   <data name="WelcomeTitleBar.Title" xml:space="preserve"><value>Benvenuto</value></data>
@@ -229,10 +228,14 @@ Il token API di questo server verrà eliminato da Gestione credenziali di Window
   <data name="NotifyReconnectedTitle" xml:space="preserve"><value>Riconnessa</value></data>
   <data name="NotifyReconnectedText" xml:space="preserve"><value>La sessione con {0} è di nuovo attiva.</value></data>
   <data name="NotifyEndedTitle" xml:space="preserve"><value>{0}: sessione terminata</value></data>
-  <data name="QuitTitle" xml:space="preserve"><value>Uscire da Windows Spice Client?</value></data>
+  <data name="QuitTitle" xml:space="preserve"><value>Uscire da PxStation Windows?</value></data>
   <data name="QuitText" xml:space="preserve"><value>Le sessioni aperte ({0}) verranno disconnesse.</value></data>
   <data name="QuitAccept" xml:space="preserve"><value>Esci</value></data>
   <data name="JumpVmList" xml:space="preserve"><value>Macchine virtuali</value></data>
   <data name="JumpOpenFile" xml:space="preserve"><value>Apri file di connessione…</value></data>
   <data name="JumpPreferences" xml:space="preserve"><value>Preferenze</value></data>
+  <data name="GroupLanguage.Text" xml:space="preserve"><value>Lingua</value></data>
+  <data name="LanguageSystemDefault" xml:space="preserve"><value>Predefinita di sistema ({0})</value></data>
+  <data name="LanguageSystemNote" xml:space="preserve"><value>Con la predefinita di sistema l’interfaccia segue la lingua di visualizzazione di Windows; le lingue senza traduzione usano l’inglese.</value></data>
+  <data name="LanguageRestartNote" xml:space="preserve"><value>La nuova lingua si applica al prossimo avvio di PxStation Windows.</value></data>
 </root>

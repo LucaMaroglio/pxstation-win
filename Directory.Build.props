@@ -8,10 +8,10 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <Deterministic>true</Deterministic>
-    <Company>Windows Spice Client</Company>
-    <Product>Windows Spice Client</Product>
-    <Copyright>MIT – deriva da MacOS Spice Client © Paweł Więcaszek</Copyright>
-    <Version>0.1.0</Version>
-    <NeutralLanguage>it-IT</NeutralLanguage>
+    <Company>Zenity.it</Company>
+    <Product>PxStation Windows</Product>
+    <Copyright>2026 - Zenity.it · MIT, fork di macos-spice-client © Paweł Więcaszek</Copyright>
+    <Version>0.3.1</Version>
+    <NeutralLanguage>en-US</NeutralLanguage>
   </PropertyGroup>
 </Project>

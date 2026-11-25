@@ -47,6 +47,7 @@ internal static class Dialogs
             Width = 96,
             Height = 96,
         });
+        // Come PxStation Mac e Linux: nome in grassetto, versione, anno e autore.
         panel.Children.Add(new TextBlock
         {
             Text = AppPaths.AppName,
@@ -58,12 +59,10 @@ internal static class Dialogs
             Text = Strings.Format("AboutVersion", AppPaths.Version),
             HorizontalAlignment = HorizontalAlignment.Center,
         });
-        panel.Children.Add(Body(Strings.Get("About")));
         panel.Children.Add(new TextBlock
         {
-            Text = Strings.Get("Credits"),
-            TextWrapping = TextWrapping.Wrap,
-            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            Text = AppPaths.Copyright,
+            HorizontalAlignment = HorizontalAlignment.Center,
         });
         var dialog = Create(root, Strings.Get("AboutTitle"), panel);
         dialog.CloseButtonText = Strings.Get("Close");

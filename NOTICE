@@ -1,4 +1,5 @@
-Windows Spice Client è il porting per Windows di MacOS Spice Client: l'implementazione del
+PxStation Windows (© 2026 Zenity.it, licenza MIT) è un fork di windows-spice-client, il porting
+per Windows di MacOS Spice Client: l'implementazione del
 protocollo SPICE (SpiceKit), le regole di sicurezza, le fixture di test e l'icona derivano da
 quel progetto:
 https://github.com/pawelwiecaszek/macos-spice-client
@@ -28,7 +29,7 @@ SOFTWARE.
 ---
 
 L'organizzazione dell'interfaccia, i testi italiani e le regole di riconnessione derivano da
-Linux Spice Client (MIT, © 2026 Linux Spice Client contributors).
+PxStation Linux (MIT, © 2026 PxStation Linux contributors).
 
 Le costanti del protocollo SPICE provengono dagli header di spice-protocol (licenza BSD):
 https://gitlab.freedesktop.org/spice/spice-protocol

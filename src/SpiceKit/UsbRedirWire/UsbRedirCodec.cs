@@ -70,7 +70,7 @@ public sealed class UsbRedirCodec(UsbRedirCapabilities? capabilities = null)
     public const uint MaxPacketLength = 64 * 1024 * 1024;
 
     /// <summary>Versione nel nostro hello (testo libero, solo per i log).</summary>
-    public const string VersionString = "Windows Spice Client";
+    public const string VersionString = "PxStation Windows";
 
     private byte[] _buffer = [];
     private int _length;

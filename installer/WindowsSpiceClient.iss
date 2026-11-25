@@ -1,7 +1,7 @@
-; Installer di Windows Spice Client (M9) per Inno Setup 7.
+; Installer di PxStation Windows (M9) per Inno Setup 7.
 ;
 ; Si compila con tools\build.ps1 -Installer, che pubblica l'eseguibile autonomo e passa a ISCC:
-;   /DAppVersion=0.1.0  /DSourceDir=<cartella di dotnet publish>  /DArch=x64|arm64
+;   /DAppVersion=0.3.1  /DSourceDir=<cartella di dotnet publish>  /DArch=x64|arm64
 ;
 ; - Per l'utente corrente, senza permessi di amministratore (%LOCALAPPDATA%\Programs); chi vuole
 ;   può scegliere «per tutti gli utenti» nella prima pagina (serve l'amministratore).
@@ -14,7 +14,7 @@
 ;   una reinstallazione li ritrova. Si eliminano dalle Preferenze, rimuovendo i server.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.3.1"
 #endif
 #ifndef Arch
   #define Arch "x64"
@@ -23,7 +23,7 @@
   #define SourceDir "..\artifacts\win-" + Arch
 #endif
 
-#define AppName "Windows Spice Client"
+#define AppName "PxStation Windows"
 #define AppExe "WindowsSpiceClient.exe"
 #define AppUserModelId "org.windowsspiceclient.WindowsSpiceClient"
 #define ProgId "WindowsSpiceClient.vv"
@@ -33,8 +33,8 @@ AppId={{8C7F3E2A-5B41-4E2D-9F6A-2D1C7B3E9A10}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
-AppPublisher={#AppName}
-AppCopyright=MIT – deriva da MacOS Spice Client © Paweł Więcaszek
+AppPublisher=Zenity.it
+AppCopyright=2026 - Zenity.it (MIT, fork di macos-spice-client © Paweł Więcaszek)
 VersionInfoVersion={#AppVersion}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
@@ -60,7 +60,7 @@ SetupIconFile=..\src\WindowsSpiceClient\Assets\app.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 OutputDir=..\artifacts\installer
-OutputBaseFilename=WindowsSpiceClient-{#AppVersion}-{#Arch}-setup
+OutputBaseFilename=PxStation-Win-{#AppVersion}-{#Arch}-setup
 Compression=lzma2/max
 SolidCompression=yes
 LicenseFile=..\LICENSE

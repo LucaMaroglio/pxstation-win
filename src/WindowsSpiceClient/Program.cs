@@ -25,6 +25,8 @@ internal static partial class Program
             return 0;
         }
         if (SingleInstance.RedirectIfAlreadyRunning()) return 0;
+        // Prima di creare l'app: risorse x:Uid e Strings seguono la lingua scelta (vale al riavvio).
+        Diagnostics.AppLog.Info($"lingua: {Services.Language.Apply(Services.Settings.Load())}");
         Application.Start(_ =>
         {
             var dispatcher = DispatcherQueue.GetForCurrentThread();

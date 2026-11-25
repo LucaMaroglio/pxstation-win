@@ -3,7 +3,8 @@ namespace WindowsSpiceClient.Services;
 /// <summary>Cartelle dell'app e identità usata in Gestione credenziali.</summary>
 internal static class AppPaths
 {
-    public const string AppName = "Windows Spice Client";
+    public const string AppName = "PxStation Windows";
+    public const string Copyright = "2026 - Zenity.it";
     public const string AppId = "org.windowsspiceclient.WindowsSpiceClient";
 
     /// <summary>

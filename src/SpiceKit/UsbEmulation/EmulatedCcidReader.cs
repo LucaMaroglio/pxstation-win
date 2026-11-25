@@ -391,7 +391,7 @@ public sealed class EmulatedCcidReader : IUsbRedirDevice
         0x03 => (value & 0xFF) switch
         {
             0 => [4, 0x03, 0x09, 0x04],
-            1 => UsbDescriptors.String("Windows Spice Client"),
+            1 => UsbDescriptors.String("PxStation Windows"),
             2 => UsbDescriptors.String("Virtual Smart Card Reader"),
             3 => UsbDescriptors.String("5350494345434344"),
             _ => null,

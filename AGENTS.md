@@ -1,4 +1,4 @@
-# AGENTS.md — Windows Spice Client
+# AGENTS.md — PxStation Windows
 
 Istruzioni per gli agenti di codice (Claude Code e altri) che lavorano in questo repository.
 Leggere tutto prima di modificare. Se qualcosa contrasta con un'indicazione diretta del
@@ -12,10 +12,10 @@ Il piano completo, con motivazioni e stime, è in [PIANO.md](PIANO.md).
 
 Client **SPICE nativo per Windows** con integrazione **Proxmox VE**:
 
-1. Protocollo SPICE implementato in **C#** (porting di SpiceKit da `../macos-spice-client`).
+1. Protocollo SPICE implementato in **C#** (porting di SpiceKit da `../pxstation-mac`).
 2. Schermo della VM disegnato con **Direct3D 11** in uno `SwapChainPanel`.
-3. Interfaccia **WinUI 3** con la stessa organizzazione di `../linux-spice-client` e di
-   `../macos-spice-client`: Benvenuto, Macchine virtuali, Preferenze (Generale e Proxmox), finestre
+3. Interfaccia **WinUI 3** con la stessa organizzazione di `../pxstation-linux` e di
+   `../pxstation-mac`: Benvenuto, Macchine virtuali, Preferenze (Generale e Proxmox), finestre
    di sessione, area di notifica, notifiche.
 4. Apre i file `.vv` (Proxmox, oVirt, QEMU) e si collega subito, perché i ticket Proxmox scadono
    in circa 30 secondi.
@@ -34,8 +34,8 @@ cartelle condivise WebDAV.
 | Distribuzione | eseguibile autonomo con icona (`Assets/app.ico`) + installer **Inno Setup** (M9), associazione `.vv` per utente senza permessi di amministratore |
 | Windows minimo | Windows 10 22H2 e Windows 11 (`TargetPlatformMinVersion` 10.0.19041.0), x64 e ARM64 |
 | Rendering | Direct3D 11 tramite **Vortice** (MIT); fallback WARP; swap chain flip-model "for composition" |
-| Lingua | italiano, testi in risorse `.resw` (M1) presi da `linux-spice-client/linux_spice_client/core/texts.py` |
-| Identità | «Windows Spice Client», id `org.windowsspiceclient.WindowsSpiceClient` |
+| Lingua | inglese (predefinita e di riserva) e italiano, in `Strings/en-US` e `Strings/it-IT`; scelta in Preferenze › Generale, altrimenti lingue preferite di Windows (`Services/Language.cs`, applicata in `Program.Main`, vale al riavvio). Ogni chiave nuova va in entrambi i `.resw` |
+| Identità | «PxStation Windows», id `org.windowsspiceclient.WindowsSpiceClient` |
 | Test | **xunit v3** su Microsoft.Testing.Platform (`global.json`) |
 | USB reale | tramite **UsbDk**, in M8 |
 
@@ -50,7 +50,7 @@ CommunityToolkit.Mvvm, xunit.v3. **Chiedere prima di aggiungerne altre.** (Il pa
 ## 3. Struttura
 
 ```
-windows-spice-client/
+pxstation-win/
 ├── AGENTS.md / CLAUDE.md / PIANO.md / README.md / LICENSE / NOTICE
 ├── Directory.Build.props        impostazioni comuni (avvisi come errori, analizzatori)
 ├── global.json                  SDK 10.0.404+, test su Microsoft.Testing.Platform
@@ -100,7 +100,7 @@ windows-spice-client/
 │       │                        JumpList (ICustomDestinationList), CommandLine (M9)
 │       ├── Services/            AppController, ServerStore, Settings, CredentialStore,
 │       │                        FileAssociation, VmListLoader, Strings, JsonFiles, ClipboardBridge (M6)
-│       ├── Strings/it-IT/       Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
+│       ├── Strings/en-US, it-IT Resources.resw (testi; x:Uid nello XAML, Strings.Get nel codice)
 │       └── Views/               Welcome, VmList, Preferences, ServerEditor, Session (+ .Agent: risoluzione e
 │                                copia di file; + .Reconnect: riconnessione nella stessa finestra; + .Audio:
 │                                microfono; + .Devices: ISO e smartcard; + .Shell: stato e azioni per area
@@ -216,10 +216,10 @@ decodifica video hardware e HiDPI vanno verificati su un PC fisico.
 
 ## 5. Porting da macOS: regole
 
-- La fonte è `../macos-spice-client/Packages/SpiceKit` (MIT). Si traduce un modulo alla volta
+- La fonte è `../pxstation-mac/Packages/SpiceKit` (MIT). Si traduce un modulo alla volta
   mantenendo i nomi dei tipi in stile C# (`DisplayServerMessage.DrawCopy`, valori uguali agli
   header) e la stessa struttura dei test.
-- Le regole di `../macos-spice-client/AGENTS.md` §5 (.vv), §6 (protocollo), §7a–§7d (USB, ISO,
+- Le regole di `../pxstation-mac/AGENTS.md` §5 (.vv), §6 (protocollo), §7a–§7d (USB, ISO,
   smartcard, Proxmox) e §9 (sicurezza) **valgono anche qui**: rileggerle prima di ogni milestone.
 - Costanti dagli header di spice-protocol (BSD). Codice LGPL (spice-gtk, spice-common,
   usbredirparser/host, libusb) solo come riferimento di comportamento: **non copiarlo**.

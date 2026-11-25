@@ -54,6 +54,19 @@
                     <StackPanel MaxWidth="760" HorizontalAlignment="Stretch" Spacing="3">
                         <TextBlock x:Uid="GeneralPageTitle" Style="{StaticResource TitleTextBlockStyle}" Margin="0,12,0,0" />
 
+                        <!-- Lingua: voci e nota impostate dal codice (vedi Services/Language.cs). -->
+                        <TextBlock x:Name="LanguageTitleText" x:Uid="GroupLanguage" Style="{StaticResource GroupHeaderStyle}" />
+                        <Grid Style="{StaticResource CardStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="LanguageNoteText" Style="{StaticResource NoteStyle}" VerticalAlignment="Center" />
+                            <ComboBox x:Name="LanguageBox" Grid.Column="1" MinWidth="220" VerticalAlignment="Center"
+                                      AutomationProperties.LabeledBy="{Binding ElementName=LanguageTitleText}"
+                                      SelectionChanged="OnLanguageChanged" />
+                        </Grid>
+
                         <TextBlock x:Uid="GroupConnection" Style="{StaticResource GroupHeaderStyle}" />
                         <Grid Style="{StaticResource CardStyle}">
                             <Grid.ColumnDefinitions>

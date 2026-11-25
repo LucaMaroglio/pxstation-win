@@ -12,7 +12,7 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <RootNamespace>WindowsSpiceClient</RootNamespace>
     <AssemblyName>WindowsSpiceClient</AssemblyName>
-    <AssemblyTitle>Windows Spice Client</AssemblyTitle>
+    <AssemblyTitle>PxStation Windows</AssemblyTitle>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64;ARM64</Platforms>
@@ -24,8 +24,8 @@
     <SelfContained>true</SelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableMsixTooling>true</EnableMsixTooling>
-    <!-- Testi in Strings\it-IT\Resources.resw: l'italiano è anche la lingua di riserva. -->
-    <DefaultLanguage>it-IT</DefaultLanguage>
+    <!-- Testi in Strings\<lingua>\Resources.resw: l'inglese (en-US) è la lingua di riserva. -->
+    <DefaultLanguage>en-US</DefaultLanguage>
     <!-- Main in Program.cs: l'istanza unica va decisa prima di creare l'app. -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>

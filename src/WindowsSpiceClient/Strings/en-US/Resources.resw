@@ -1,0 +1,239 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  English interface texts: the default language and the fallback for languages without a
+  translation. Every key must also exist in Strings\it-IT\Resources.resw.
+  "Name.Property" keys are used by x:Uid in XAML; plain keys by Strings.Get.
+-->
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Comuni -->
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="Connecting" xml:space="preserve"><value>Connecting…</value></data>
+  <data name="CredentialError" xml:space="preserve"><value>Windows Credential Manager: {0}</value></data>
+
+  <!-- Informazioni -->
+  <data name="AboutTitle" xml:space="preserve"><value>About</value></data>
+  <data name="AboutVersion" xml:space="preserve"><value>Version {0}</value></data>
+
+  <!-- Benvenuto -->
+  <data name="WelcomeTitleBar.Title" xml:space="preserve"><value>Welcome</value></data>
+  <data name="WelcomeText.Text" xml:space="preserve"><value>Open a virt-viewer connection file (.vv), such as the one your browser downloads when you click “SPICE” in Proxmox VE, or manage the virtual machines on your Proxmox servers.</value></data>
+  <data name="OpenConnectionFileButton.Text" xml:space="preserve"><value>Open Connection File…</value></data>
+  <data name="VirtualMachinesButton.Text" xml:space="preserve"><value>Virtual Machines…</value></data>
+  <data name="WelcomeDropHint.Text" xml:space="preserve"><value>or drop a .vv file here</value></data>
+  <data name="OpenCommit" xml:space="preserve"><value>Open</value></data>
+  <data name="OpenFailedTitle" xml:space="preserve"><value>Cannot open the connection file</value></data>
+
+  <!-- Macchine virtuali -->
+  <data name="VmListTitleBar.Title" xml:space="preserve"><value>Virtual Machines</value></data>
+  <data name="RefreshCommand.Label" xml:space="preserve"><value>Refresh</value></data>
+  <data name="OpenFileCommand.Label" xml:space="preserve"><value>Open File…</value></data>
+  <data name="PreferencesCommand.Label" xml:space="preserve"><value>Preferences…</value></data>
+  <data name="AboutCommand.Label" xml:space="preserve"><value>About</value></data>
+  <data name="QuitCommand.Label" xml:space="preserve"><value>Quit</value></data>
+  <data name="NoServersTitle.Text" xml:space="preserve"><value>No Proxmox servers</value></data>
+  <data name="NoServersText.Text" xml:space="preserve"><value>Add a Proxmox server with an API token to start, stop and connect to virtual machines from here.</value></data>
+  <data name="ConfigureServersButton.Content" xml:space="preserve"><value>Configure Servers…</value></data>
+  <data name="PowerButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Power</value></data>
+  <data name="PowerButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Power</value></data>
+  <data name="EmptyTokenHint" xml:space="preserve"><value>No virtual machine is visible to this API token. Grant the token (not just its user) VM.Audit, VM.PowerMgmt and VM.Console, for example the PVEVMUser role on /vms, or turn off privilege separation.</value></data>
+  <data name="Connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="ResumeAndConnect" xml:space="preserve"><value>Resume and Connect</value></data>
+  <data name="StartAndConnect" xml:space="preserve"><value>Start and Connect</value></data>
+  <data name="ConnectToolTip" xml:space="preserve"><value>Opens {0} in a new window</value></data>
+  <data name="ConfirmResetTitle" xml:space="preserve"><value>Reset “{0}”?</value></data>
+  <data name="ConfirmStopTitle" xml:space="preserve"><value>Force power off “{0}”?</value></data>
+  <data name="ConfirmPowerText" xml:space="preserve"><value>It is like pulling the plug: unsaved work in the virtual machine is lost. Use Shut Down or Reboot to let the guest system close properly.</value></data>
+  <data name="ConfirmResetAccept" xml:space="preserve"><value>Reset</value></data>
+  <data name="ConfirmStopAccept" xml:space="preserve"><value>Power Off</value></data>
+
+  <!-- Preferenze: Generale -->
+  <data name="PreferencesTitleBar.Title" xml:space="preserve"><value>Preferences</value></data>
+  <data name="GeneralPageItem.Content" xml:space="preserve"><value>General</value></data>
+  <data name="ProxmoxPageItem.Content" xml:space="preserve"><value>Proxmox</value></data>
+  <data name="GeneralPageTitle.Text" xml:space="preserve"><value>General</value></data>
+  <data name="GroupConnection.Text" xml:space="preserve"><value>Connection</value></data>
+  <data name="ReconnectTitle.Text" xml:space="preserve"><value>Reconnect automatically when the connection drops</value></data>
+  <data name="ReconnectNote.Text" xml:space="preserve"><value>Retries for about two minutes, waiting for the network to come back. Proxmox sessions get a new ticket through the API (the server must be configured on the Proxmox page); the ticket of a downloaded file works only once.</value></data>
+  <data name="GroupDisplay.Text" xml:space="preserve"><value>Display</value></data>
+  <data name="FullScreenTitle.Text" xml:space="preserve"><value>Open sessions in full screen</value></data>
+  <data name="FullScreenNote.Text" xml:space="preserve"><value>The guest resolution follows the screen if spice-vdagent is installed in the VM.</value></data>
+  <data name="GroupDesktop.Text" xml:space="preserve"><value>Desktop</value></data>
+  <data name="TrayTitle.Text" xml:space="preserve"><value>Show the icon in the notification area</value></data>
+  <data name="TrayNote.Text" xml:space="preserve"><value>The icon gives access to open sessions, the power menu and reconnection. While the icon is on, the program keeps running even with no windows open.</value></data>
+  <data name="NotificationsTitle.Text" xml:space="preserve"><value>Show notifications for sessions</value></data>
+  <data name="GroupVVFiles.Text" xml:space="preserve"><value>Connection files (.vv)</value></data>
+  <data name="UseThisProgramButton.Content" xml:space="preserve"><value>Use This Program</value></data>
+  <data name="VVFootnote.Text" xml:space="preserve"><value>If the files your browser downloads when you click “SPICE” in Proxmox open with this program, those sessions also get the power menu and automatic reconnection.</value></data>
+  <data name="VVHandlerIsDefault" xml:space="preserve"><value>.vv files open with this program.</value></data>
+  <data name="VVHandlerOther" xml:space="preserve"><value>.vv files now open with: {0}.</value></data>
+  <data name="NoProgram" xml:space="preserve"><value>no program</value></data>
+  <data name="AssociationFailedTitle" xml:space="preserve"><value>Cannot change the file association</value></data>
+
+  <!-- Preferenze: Proxmox -->
+  <data name="ProxmoxPageTitle.Text" xml:space="preserve"><value>Proxmox Servers</value></data>
+  <data name="NoServersInList.Text" xml:space="preserve"><value>No servers.</value></data>
+  <data name="AddServerButton.Content" xml:space="preserve"><value>Add…</value></data>
+  <data name="EditServerButton.Content" xml:space="preserve"><value>Edit…</value></data>
+  <data name="RemoveServerButton.Content" xml:space="preserve"><value>Remove</value></data>
+  <data name="ServersFootnote.Text" xml:space="preserve"><value>Used for Start, Shut Down, Reboot, the Virtual Machines window and reconnection. Create an API token in Proxmox (Datacenter › Permissions › API Tokens) with VM.Audit, VM.PowerMgmt and VM.Console on your VMs. The secret is kept in Windows Credential Manager.</value></data>
+  <data name="RemoveServerTitle" xml:space="preserve"><value>Remove Server</value></data>
+  <data name="RemoveServerText" xml:space="preserve"><value>Remove “{0}”?
+
+The API token of this server will be deleted from Windows Credential Manager.</value></data>
+
+  <!-- Editor dei server -->
+  <data name="AddServerTitle" xml:space="preserve"><value>Add Server</value></data>
+  <data name="EditServerTitle" xml:space="preserve"><value>Edit Server</value></data>
+  <data name="ServerNameBox.Header" xml:space="preserve"><value>Name</value></data>
+  <data name="ServerNameBox.PlaceholderText" xml:space="preserve"><value>Office cluster</value></data>
+  <data name="ServerHostBox.Header" xml:space="preserve"><value>Host</value></data>
+  <data name="ServerHostBox.PlaceholderText" xml:space="preserve"><value>pve1.example.com</value></data>
+  <data name="ServerPortBox.Header" xml:space="preserve"><value>Port</value></data>
+  <data name="ServerTokenBox.Header" xml:space="preserve"><value>Token ID</value></data>
+  <data name="ServerTokenBox.PlaceholderText" xml:space="preserve"><value>user@pve!spice</value></data>
+  <data name="ServerSecretBox.Header" xml:space="preserve"><value>Token secret</value></data>
+  <data name="SecretKeepPlaceholder" xml:space="preserve"><value>leave empty to keep the saved one</value></data>
+  <data name="UntrustedCertBar.Title" xml:space="preserve"><value>Untrusted certificate</value></data>
+  <data name="UntrustedCertBar.Message" xml:space="preserve"><value>The server certificate is trusted neither by Windows nor by a Proxmox CA this program has already seen.</value></data>
+  <data name="UntrustedCertHint.Text" xml:space="preserve"><value>Compare it with Proxmox › node › System › Certificates (pve-ssl.pem) before trusting it.</value></data>
+  <data name="TrustCertificateButton.Content" xml:space="preserve"><value>Trust This Certificate</value></data>
+
+  <!-- Sessione (M1: riepilogo del profilo) -->
+  <data name="SummaryProxmox" xml:space="preserve"><value>VM {0} on node {1} ({2})</value></data>
+  <data name="SummaryHost" xml:space="preserve"><value>host {0}</value></data>
+  <data name="SummaryTls" xml:space="preserve"><value>TLS port {0}</value></data>
+  <data name="SummaryPlain" xml:space="preserve"><value>plain port {0}</value></data>
+  <data name="SummaryProxy" xml:space="preserve"><value>proxy {0}:{1}</value></data>
+  <data name="SummaryVerified" xml:space="preserve"><value>certificate to be checked against the file's CA and subject</value></data>
+  <data name="SessionConnecting" xml:space="preserve"><value>Connecting…</value></data>
+  <data name="SessionConnected" xml:space="preserve"><value>Connected</value></data>
+  <data name="SessionConnectedDetail" xml:space="preserve"><value>Linked channels: {0}.</value></data>
+  <data name="SessionGuestName" xml:space="preserve"><value>Virtual machine: {0}</value></data>
+  <data name="SessionAgent" xml:space="preserve"><value>SPICE agent active</value></data>
+  <data name="SessionClosed" xml:space="preserve"><value>Session closed</value></data>
+  <data name="SessionFailed" xml:space="preserve"><value>Connection failed</value></data>
+  <data name="SessionEnded" xml:space="preserve"><value>Session ended</value></data>
+  <data name="SessionMenuButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Session commands</value></data>
+  <data name="SessionMenuButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Session commands</value></data>
+  <data name="SessionSendCtrlAltDel.Text" xml:space="preserve"><value>Send Ctrl+Alt+Del</value></data>
+  <data name="SessionToggleFullscreen.Text" xml:space="preserve"><value>Full Screen</value></data>
+  <data name="SessionReleaseCursor.Text" xml:space="preserve"><value>Release Mouse and Keyboard</value></data>
+  <data name="DisplayPanel.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Virtual machine display</value></data>
+  <data name="DisplayPanel.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Keys and clicks go to the virtual machine.</value></data>
+  <data name="SessionReleasedHint" xml:space="preserve"><value>Mouse and keyboard released: click the VM display to capture them again ({0} releases them).</value></data>
+  <data name="SessionCaptureHint" xml:space="preserve"><value>Click the VM display to capture the mouse; {0} releases it.</value></data>
+  <data name="SessionConnectionLost" xml:space="preserve"><value>Connection lost</value></data>
+  <data name="SessionReconnectingIn" xml:space="preserve"><value>Reconnecting in {0} s (attempt {1}/{2})</value></data>
+  <data name="SessionReconnectingNow" xml:space="preserve"><value>Reconnecting… (attempt {0}/{1})</value></data>
+  <data name="SessionReconnect" xml:space="preserve"><value>Reconnect</value></data>
+  <data name="SessionCancelReconnect" xml:space="preserve"><value>Cancel</value></data>
+  <data name="SessionReconnectCancelled" xml:space="preserve"><value>Reconnection cancelled.</value></data>
+  <data name="SessionGaveUp" xml:space="preserve"><value>Reconnection failed after several attempts.</value></data>
+  <data name="SessionVmOff" xml:space="preserve"><value>The virtual machine is powered off.</value></data>
+  <data name="SessionOneTimeTicket" xml:space="preserve"><value>The ticket of the connection file works only once: open a new one to reconnect.</value></data>
+  <data name="SessionNoApi" xml:space="preserve"><value>Reconnecting needs a new ticket: add this server in the Proxmox preferences so the program can reconnect by itself.</value></data>
+  <data name="SessionReconnected" xml:space="preserve"><value>Reconnected</value></data>
+  <data name="TransferTitle" xml:space="preserve"><value>Copy to the virtual machine</value></data>
+  <data name="TransferProgressText" xml:space="preserve"><value>{0} ({1} of {2})</value></data>
+  <data name="TransferDone" xml:space="preserve"><value>{0} copied to the downloads folder of the virtual machine.</value></data>
+  <data name="TransferFailed" xml:space="preserve"><value>{0} not copied: {1}</value></data>
+  <data name="TransferNotAFile" xml:space="preserve"><value>Only files can be copied, not folders.</value></data>
+  <data name="TransferNoAgent" xml:space="preserve"><value>Copying files to the virtual machine needs the SPICE agent (spice-vdagent) in the guest system.</value></data>
+  <data name="TransferCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="SessionMicrophone.Text" xml:space="preserve"><value>Use the Microphone</value></data>
+  <data name="MicrophoneTitle" xml:space="preserve"><value>Microphone</value></data>
+  <data name="MicrophoneInUse" xml:space="preserve"><value>Microphone in use by the virtual machine</value></data>
+  <data name="MicrophoneDenied" xml:space="preserve"><value>Windows does not let this app use the microphone: turn it on in Settings › Privacy &amp; security › Microphone (“Let desktop apps access your microphone”).</value></data>
+  <data name="SessionMountIso.Text" xml:space="preserve"><value>Mount an ISO Image…</value></data>
+  <data name="SessionEjectIso" xml:space="preserve"><value>Eject {0}</value></data>
+  <data name="SessionSmartcardMenu.Text" xml:space="preserve"><value>Smart Card</value></data>
+  <data name="SmartcardNoReaders" xml:space="preserve"><value>No smart card readers</value></data>
+  <data name="SmartcardNoCard" xml:space="preserve"><value>{0} (no card)</value></data>
+  <data name="SmartcardRemove" xml:space="preserve"><value>Remove {0} from the virtual machine</value></data>
+  <data name="DevicesTitle" xml:space="preserve"><value>Devices</value></data>
+  <data name="IsoMounted" xml:space="preserve"><value>{0} is in the virtual CD drive of the virtual machine.</value></data>
+  <data name="IsoEjected" xml:space="preserve"><value>{0} was ejected.</value></data>
+  <data name="IsoFailed" xml:space="preserve"><value>Cannot mount {0}: {1}</value></data>
+  <data name="SmartcardShared" xml:space="preserve"><value>The smart card in {0} is shared with the virtual machine; while it is there, Windows does not use it.</value></data>
+  <data name="SmartcardRemoved" xml:space="preserve"><value>The smart card is back to Windows.</value></data>
+  <data name="SmartcardFailed" xml:space="preserve"><value>Cannot share the smart card: {0}</value></data>
+  <data name="SessionNoTicketHint" xml:space="preserve"><value>With Proxmox, press “Connect” again (or SPICE in the web interface) to get a new file.</value></data>
+<!-- M9: area di notifica, notifiche, jump list -->
+  <data name="TraySessions" xml:space="preserve"><value>Sessions</value></data>
+  <data name="TrayShowWindow" xml:space="preserve"><value>Show Window</value></data>
+  <data name="TrayVmList" xml:space="preserve"><value>Virtual Machines…</value></data>
+  <data name="TrayOpenFile" xml:space="preserve"><value>Open Connection File…</value></data>
+  <data name="TrayPreferences" xml:space="preserve"><value>Preferences…</value></data>
+  <data name="TrayQuit" xml:space="preserve"><value>Quit</value></data>
+  <data name="TrayTooltipActive" xml:space="preserve"><value>{0} — active sessions: {1}</value></data>
+  <data name="TrayRetryNow" xml:space="preserve"><value>Retry Now</value></data>
+  <data name="TrayCancelReconnect" xml:space="preserve"><value>Cancel Reconnection</value></data>
+  <data name="TrayPower" xml:space="preserve"><value>Power</value></data>
+  <data name="TraySetupProxmox" xml:space="preserve"><value>Set Up Proxmox Access…</value></data>
+  <data name="TrayDisconnect" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="TrayRemove" xml:space="preserve"><value>Remove from List</value></data>
+  <data name="TrayEntry" xml:space="preserve"><value>{0} — {1}</value></data>
+  <data name="StateConnecting" xml:space="preserve"><value>connecting…</value></data>
+  <data name="StateConnected" xml:space="preserve"><value>connected</value></data>
+  <data name="StateReconnecting" xml:space="preserve"><value>reconnecting {0}/{1}</value></data>
+  <data name="StateEnded" xml:space="preserve"><value>ended</value></data>
+  <data name="ActionStartReconnect" xml:space="preserve"><value>Start and Reconnect</value></data>
+  <data name="SessionStartingVm" xml:space="preserve"><value>Starting the virtual machine…</value></data>
+  <data name="SessionLostConnection" xml:space="preserve"><value>Connection lost.</value></data>
+  <data name="PowerFailedTitle" xml:space="preserve"><value>{0}: power</value></data>
+  <data name="NotifyLostTitle" xml:space="preserve"><value>Connection lost</value></data>
+  <data name="NotifyLostText" xml:space="preserve"><value>Reconnecting to {0}…</value></data>
+  <data name="NotifyReconnectedTitle" xml:space="preserve"><value>Reconnected</value></data>
+  <data name="NotifyReconnectedText" xml:space="preserve"><value>The session with {0} is active again.</value></data>
+  <data name="NotifyEndedTitle" xml:space="preserve"><value>{0}: session ended</value></data>
+  <data name="QuitTitle" xml:space="preserve"><value>Quit PxStation Windows?</value></data>
+  <data name="QuitText" xml:space="preserve"><value>The open sessions ({0}) will be disconnected.</value></data>
+  <data name="QuitAccept" xml:space="preserve"><value>Quit</value></data>
+  <data name="JumpVmList" xml:space="preserve"><value>Virtual Machines</value></data>
+  <data name="JumpOpenFile" xml:space="preserve"><value>Open Connection File…</value></data>
+  <data name="JumpPreferences" xml:space="preserve"><value>Preferences</value></data>
+  <data name="GroupLanguage.Text" xml:space="preserve"><value>Language</value></data>
+  <data name="LanguageSystemDefault" xml:space="preserve"><value>System default ({0})</value></data>
+  <data name="LanguageSystemNote" xml:space="preserve"><value>With the system default the interface follows the Windows display language; languages without a translation use English.</value></data>
+  <data name="LanguageRestartNote" xml:space="preserve"><value>The new language applies the next time PxStation Windows starts.</value></data>
+</root>

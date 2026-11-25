@@ -1,4 +1,4 @@
-# Windows Spice Client – piano di progetto (strategia 3b)
+# PxStation Windows – piano di progetto (strategia 3b)
 
 Client SPICE nativo per Windows con integrazione Proxmox VE. Il protocollo SPICE è
 implementato in C# e lo schermo è disegnato con Direct3D 11. Non si usano remote-viewer,
@@ -8,7 +8,7 @@ Fonti:
 - **macos-spice-client** (MIT) è il riferimento per il protocollo e per le funzioni. I moduli
   di SpiceKit si portano in C# uno per uno; regole di sicurezza, limiti e milestone vengono dal
   suo `AGENTS.md`.
-- **linux-spice-client** (MIT) è il riferimento per l'organizzazione dell'interfaccia, i testi
+- **pxstation-linux** (MIT) è il riferimento per l'organizzazione dell'interfaccia, i testi
   italiani, la logica Proxmox e le regole di riconnessione.
 - Le **fixture binarie** di `Packages/SpiceKit/Tests/Fixtures` (codec, catture del display, `.vv`,
   TLS) si riusano così come sono: sono indipendenti dal linguaggio e rendono verificabile ogni
@@ -62,7 +62,7 @@ come riferimento di comportamento senza copiarne codice, come stabilito per la v
 ## 2. Struttura della soluzione
 
 ```
-windows-spice-client/
+pxstation-win/
 ├── WindowsSpiceClient.sln
 ├── src/
 │   ├── SpiceKit/                  libreria .NET senza dipendenze da WinUI
@@ -112,7 +112,8 @@ Regole riprese dal progetto macOS:
 | **Jump list** | Macchine virtuali, Apri file di connessione…, Preferenze | `JumpList` sull'icona nella barra delle applicazioni |
 
 Lingua: **italiano** con i testi della versione Linux, in file di risorse (`.resw`) così da poter
-aggiungere l'inglese in seguito.
+aggiungere l'inglese in seguito. *(0.3.1: aggiunto l'inglese, ora lingua predefinita e di riserva,
+con la scelta in Preferenze › Generale; vedi README, «Lingua dell'interfaccia».)*
 
 Riconnessione: come su macOS, avviene **nella stessa finestra**, con un ticket nuovo dall'API e i
 tempi della versione Linux (8 tentativi, 1 → 30 s, attesa del ritorno della rete). Dispositivi
@@ -188,5 +189,5 @@ Le decisioni in vigore sono riportate in `AGENTS.md` §2. Questo elenco resta co
 3. **Dipendenze** della tabella in §1: approvazione dell'elenco.
 4. **USB reale tramite UsbDk:** inclusa in M8 oppure rinviata. Le funzioni emulate (ISO e
    lettore CCID) restano comunque.
-5. **Nome e identificativo dell'app:** proposta «Windows Spice Client», id
+5. **Nome e identificativo dell'app:** proposta «PxStation Windows», id
    `org.windowsspiceclient.WindowsSpiceClient`.

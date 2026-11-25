@@ -67,7 +67,7 @@ try {
         Invoke-Step "Installer $version" {
             & $iscc /Q "/DAppVersion=$version" '/DArch=x64' "/DSourceDir=$out" (Join-Path $root 'installer\WindowsSpiceClient.iss')
         }
-        Write-Host "Installer: $(Join-Path $root "artifacts\installer\WindowsSpiceClient-$version-x64-setup.exe")"
+        Write-Host "Installer: $(Join-Path $root "artifacts\installer\PxStation-Win-$version-x64-setup.exe")"
     }
 
     function Test-Report([string] $report, [string[]] $required) {
