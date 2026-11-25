@@ -4,7 +4,7 @@ namespace WindowsSpiceClient.Services;
 internal static class AppPaths
 {
     public const string AppName = "PxStation Windows";
-    public const string Copyright = "2026 - Zenity.it";
+    public const string Copyright = "2026 - Luca Maroglio";
     public const string AppId = "org.windowsspiceclient.WindowsSpiceClient";
 
     /// <summary>

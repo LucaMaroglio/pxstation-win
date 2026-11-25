@@ -17,7 +17,7 @@ disegnato con Direct3D 11. Non servono remote-viewer né GTK.
 ## Novità 0.3.1
 
 - Nuovo nome (PxStation Windows), nuova icona e finestra Informazioni con nome, versione e
-  «2026 - Zenity.it».
+  «2026 - Luca Maroglio».
 - Interfaccia in inglese e in italiano, con la scelta della lingua in Preferenze › Generale
   (vedi [Lingua dell'interfaccia](#lingua-dellinterfaccia)).
 - Versione allineata a PxStation Mac e PxStation Linux (0.3.1).
