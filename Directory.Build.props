@@ -8,9 +8,9 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <Deterministic>true</Deterministic>
-    <Company>Zenity.it</Company>
+    <Company>Luca Maroglio</Company>
     <Product>PxStation Windows</Product>
-    <Copyright>2026 - Zenity.it · MIT, fork di macos-spice-client © Paweł Więcaszek</Copyright>
+    <Copyright>2026 - Luca Maroglio · MIT, fork di macos-spice-client © Paweł Więcaszek</Copyright>
     <Version>0.3.1</Version>
     <NeutralLanguage>en-US</NeutralLanguage>
   </PropertyGroup>

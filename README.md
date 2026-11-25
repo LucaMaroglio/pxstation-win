@@ -10,7 +10,7 @@ disegnato con Direct3D 11. Non servono remote-viewer né GTK.
 
 > **PxStation Windows è un fork di windows-spice-client**, la versione per Windows di
 > [macos-spice-client](https://github.com/pawelwiecaszek/macos-spice-client) di Paweł Więcaszek
-> (licenza MIT), rinominato e mantenuto da Zenity.it. Progetti fratelli, con la stessa numerazione:
+> (licenza MIT), rinominato e mantenuto da Luca Maroglio. Progetti fratelli, con la stessa numerazione:
 > [PxStation Mac](https://github.com/LucaMaroglio/pxstation-mac) e
 > [PxStation Linux](https://github.com/LucaMaroglio/pxstation-linux).
 
